@@ -1,10 +1,13 @@
 use crate::lazy::logical_plan::optimizer::check_down_node;
 use crate::lazy::prelude::*;
-use crate::lazy::utils::{count_downtree_projections, expr_to_root_column, rename_expr_root_name};
+use crate::lazy::utils::{
+    count_downtree_projections, expr_to_root_column, has_expr, rename_expr_root_name,
+};
 use crate::prelude::*;
 use ahash::RandomState;
 use std::collections::HashMap;
 use std::sync::Arc;
+
 // arbitrary constant to reduce reallocation.
 // don't expect more than 100 predicates.
 const HASHMAP_SIZE: usize = 100;
@@ -23,7 +26,26 @@ fn insert_and_combine_predicate(
     *existing_predicate = existing_predicate.clone().and(predicate)
 }
 
-pub struct PredicatePushDown {}
+pub struct PredicatePushDown {
+    // used in has_expr check. This reduces box allocations
+    unique_dummy: Expr,
+    duplicated_dummy: Expr,
+    binary_dummy: Expr,
+    is_null_dummy: Expr,
+    is_not_null_dummy: Expr,
+}
+
+impl Default for PredicatePushDown {
+    fn default() -> Self {
+        PredicatePushDown {
+            unique_dummy: lit("_").is_unique(),
+            duplicated_dummy: lit("_").is_duplicated(),
+            binary_dummy: lit("_").eq(lit("_")),
+            is_null_dummy: lit("_").is_null(),
+            is_not_null_dummy: lit("_").is_null(),
+        }
+    }
+}
 
 pub(crate) fn combine_predicates<I>(iter: I) -> Expr
 where
@@ -181,12 +203,32 @@ impl PredicatePushDown {
                 subset,
                 maintain_order,
             } => {
-                let input = self.push_down(*input, acc_predicates)?;
-                Ok(Distinct {
+                // currently the distinct operation only keeps the first occurrences.
+                // this may have influence on the pushed down predicates. If the pushed down predicates
+                // contain a binary expression (thus depending on values in multiple columns) the final result may differ if it is pushed down.
+                let mut local_pred = Vec::with_capacity(acc_predicates.len());
+
+                let mut new_acc_predicates = init_hashmap();
+                for (name, predicate) in acc_predicates {
+                    if has_expr(&predicate, &self.binary_dummy) {
+                        local_pred.push(predicate)
+                    } else {
+                        new_acc_predicates.insert(name, predicate);
+                    }
+                }
+
+                let input = self.push_down(*input, new_acc_predicates)?;
+                let lp = Distinct {
                     input: Box::new(input),
                     maintain_order,
                     subset,
-                })
+                };
+                let mut builder = LogicalPlanBuilder::from(lp);
+                if !local_pred.is_empty() {
+                    let predicate = combine_predicates(local_pred.into_iter());
+                    builder = builder.filter(predicate)
+                }
+                Ok(builder.build())
             }
             Aggregate {
                 input,
@@ -216,21 +258,49 @@ impl PredicatePushDown {
 
                 let mut pushdown_left = init_hashmap();
                 let mut pushdown_right = init_hashmap();
-                let mut local_predicates = vec![];
+                let mut local_predicates = Vec::with_capacity(acc_predicates.len());
 
-                for predicate in acc_predicates.values() {
+                for (_, predicate) in acc_predicates {
+                    // unique and duplicated can be caused by joins
+                    if has_expr(&predicate, &self.unique_dummy) {
+                        local_predicates.push(predicate.clone());
+                        continue;
+                    }
+                    if has_expr(&predicate, &self.duplicated_dummy) {
+                        local_predicates.push(predicate.clone());
+                        continue;
+                    }
+                    let mut filter_left = false;
+                    let mut filter_right = false;
+
                     // no else if. predicate can be in both tables.
                     if check_down_node(&predicate, schema_left) {
                         let name =
                             Arc::new(predicate.to_field(schema_left).unwrap().name().clone());
                         insert_and_combine_predicate(&mut pushdown_left, name, predicate.clone());
+                        filter_left = true;
                     }
                     if check_down_node(&predicate, schema_right) {
                         let name =
                             Arc::new(predicate.to_field(schema_right).unwrap().name().clone());
                         insert_and_combine_predicate(&mut pushdown_right, name, predicate.clone());
-                    } else {
-                        local_predicates.push(predicate.clone())
+                        filter_right = true;
+                    }
+                    if !(filter_left & filter_right) {
+                        local_predicates.push(predicate.clone());
+                        continue;
+                    }
+                    // An outer join or left join may create null values.
+                    // we also do it local
+                    if (how == JoinType::Outer) | (how == JoinType::Left) {
+                        if has_expr(&predicate, &self.is_not_null_dummy) {
+                            local_predicates.push(predicate.clone());
+                            continue;
+                        }
+                        if has_expr(&predicate, &self.is_null_dummy) {
+                            local_predicates.push(predicate);
+                            continue;
+                        }
                     }
                 }
 
