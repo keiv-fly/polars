@@ -139,7 +139,7 @@ where
     }
 
     fn shift(&self, periods: i32, _fill_value: &Option<u8>) -> Result<Box<dyn SeriesOps>> {
-        ChunkShift::shift(self, periods, &None).map(|ca| ca.as_series_ops())
+        ChunkShiftFill::shift_and_fill(self, periods, None).map(|ca| ca.as_series_ops())
     }
 
     fn name(&self) -> &str {

@@ -640,7 +640,7 @@ pub enum FillNoneStrategy {
 }
 
 /// Replace None values with various strategies
-pub trait ChunkFillNone<T> {
+pub trait ChunkFillNone {
     /// Replace None values with one of the following strategies:
     /// * Forward fill (replace None with the previous value)
     /// * Backward fill (replace None with the next value)
@@ -650,7 +650,9 @@ pub trait ChunkFillNone<T> {
     fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Self>
     where
         Self: Sized;
-
+}
+/// Replace None values with a value
+pub trait ChunkFillNoneValue<T> {
     /// Replace None values with a give value `T`.
     fn fill_none_with_value(&self, value: T) -> Result<Self>
     where
@@ -831,10 +833,14 @@ impl<T> ChunkExpandAtIndex<ObjectType<T>> for ObjectChunked<T> {
 }
 
 /// Shift the values of a ChunkedArray by a number of periods.
-pub trait ChunkShift<T, V> {
+pub trait ChunkShiftFill<T, V> {
     /// Shift the values by a given period and fill the parts that will be empty due to this operation
     /// with `fill_value`.
-    fn shift(&self, periods: i32, fill_value: &Option<V>) -> Result<ChunkedArray<T>>;
+    fn shift_and_fill(&self, periods: i32, fill_value: V) -> Result<ChunkedArray<T>>;
+}
+
+pub trait ChunkShift<T> {
+    fn shift(&self, periods: i32) -> Result<ChunkedArray<T>>;
 }
 
 /// Combine 2 ChunkedArrays based on some predicate.

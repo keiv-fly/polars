@@ -23,12 +23,16 @@ fn chunk_shift_helper<T>(
     }
 }
 
-impl<T> ChunkShift<T, T::Native> for ChunkedArray<T>
+impl<T> ChunkShiftFill<T, Option<T::Native>> for ChunkedArray<T>
 where
     T: PolarsNumericType,
     T::Native: Copy,
 {
-    fn shift(&self, periods: i32, fill_value: &Option<T::Native>) -> Result<ChunkedArray<T>> {
+    fn shift_and_fill(
+        &self,
+        periods: i32,
+        fill_value: Option<T::Native>,
+    ) -> Result<ChunkedArray<T>> {
         if periods.abs() >= self.len() as i32 {
             return Err(PolarsError::OutOfBounds(
                 format!("The value of parameter `periods`: {} in the shift operation is larger than the length of the ChunkedArray: {}", periods, self.len()).into()));
@@ -39,17 +43,26 @@ where
         // Fill the front of the array
         if periods > 0 {
             for _ in 0..periods {
-                builder.append_option(*fill_value)
+                builder.append_option(fill_value)
             }
             chunk_shift_helper(self, &mut builder, amount, 0);
         // Fill the back of the array
         } else {
             chunk_shift_helper(self, &mut builder, amount, periods.abs() as usize);
             for _ in 0..periods.abs() {
-                builder.append_option(*fill_value)
+                builder.append_option(fill_value)
             }
         }
         Ok(builder.finish())
+    }
+}
+impl<T> ChunkShift<T> for ChunkedArray<T>
+where
+    T: PolarsNumericType,
+    T::Native: Copy,
+{
+    fn shift(&self, periods: i32) -> Result<ChunkedArray<T>> {
+        self.shift_and_fill(periods, None)
     }
 }
 
@@ -85,8 +98,8 @@ macro_rules! impl_shift {
     }};
 }
 
-impl ChunkShift<BooleanType, bool> for BooleanChunked {
-    fn shift(&self, periods: i32, fill_value: &Option<bool>) -> Result<BooleanChunked> {
+impl ChunkShiftFill<BooleanType, Option<bool>> for BooleanChunked {
+    fn shift_and_fill(&self, periods: i32, fill_value: Option<bool>) -> Result<BooleanChunked> {
         if periods.abs() >= self.len() as i32 {
             return Err(PolarsError::OutOfBounds(
                 format!("The value of parameter `periods`: {} in the shift operation is larger than the length of the ChunkedArray: {}", periods, self.len()).into()));
@@ -96,14 +109,19 @@ impl ChunkShift<BooleanType, bool> for BooleanChunked {
         fn append_fn(builder: &mut PrimitiveChunkedBuilder<BooleanType>, v: Option<bool>) {
             builder.append_option(v);
         }
-        let fill_value = *fill_value;
 
         impl_shift!(self, builder, periods, fill_value, append_option, append_fn)
     }
 }
 
-impl ChunkShift<Utf8Type, &str> for Utf8Chunked {
-    fn shift(&self, periods: i32, fill_value: &Option<&str>) -> Result<Utf8Chunked> {
+impl ChunkShift<BooleanType> for BooleanChunked {
+    fn shift(&self, periods: i32) -> Result<Self> {
+        self.shift_and_fill(periods, None)
+    }
+}
+
+impl ChunkShiftFill<Utf8Type, Option<&str>> for Utf8Chunked {
+    fn shift_and_fill(&self, periods: i32, fill_value: Option<&str>) -> Result<Utf8Chunked> {
         if periods.abs() >= self.len() as i32 {
             return Err(PolarsError::OutOfBounds(
                 format!("The value of parameter `periods`: {} in the shift operation is larger than the length of the ChunkedArray: {}", periods, self.len()).into()));
@@ -112,14 +130,19 @@ impl ChunkShift<Utf8Type, &str> for Utf8Chunked {
         fn append_fn(builder: &mut Utf8ChunkedBuilder, v: Option<&str>) {
             builder.append_option(v);
         }
-        let fill_value = *fill_value;
 
         impl_shift!(self, builder, periods, fill_value, append_option, append_fn)
     }
 }
 
-impl ChunkShift<ListType, Series> for ListChunked {
-    fn shift(&self, periods: i32, fill_value: &Option<Series>) -> Result<ListChunked> {
+impl ChunkShift<Utf8Type> for Utf8Chunked {
+    fn shift(&self, periods: i32) -> Result<Self> {
+        self.shift_and_fill(periods, None)
+    }
+}
+
+impl ChunkShiftFill<ListType, &Option<Series>> for ListChunked {
+    fn shift_and_fill(&self, periods: i32, fill_value: &Option<Series>) -> Result<ListChunked> {
         if periods.abs() >= self.len() as i32 {
             return Err(PolarsError::OutOfBounds(
                 format!("The value of parameter `periods`: {} in the shift operation is larger than the length of the ChunkedArray: {}", periods, self.len()).into()));
@@ -141,11 +164,17 @@ impl ChunkShift<ListType, Series> for ListChunked {
     }
 }
 
-impl<T> ChunkShift<ObjectType<T>, ObjectType<T>> for ObjectChunked<T> {
-    fn shift(
+impl ChunkShift<ListType> for ListChunked {
+    fn shift(&self, periods: i32) -> Result<Self> {
+        self.shift_and_fill(periods, &None)
+    }
+}
+
+impl<T> ChunkShiftFill<ObjectType<T>, Option<ObjectType<T>>> for ObjectChunked<T> {
+    fn shift_and_fill(
         &self,
         _periods: i32,
-        _fill_value: &Option<ObjectType<T>>,
+        _fill_value: Option<ObjectType<T>>,
     ) -> Result<ChunkedArray<ObjectType<T>>> {
         todo!()
     }

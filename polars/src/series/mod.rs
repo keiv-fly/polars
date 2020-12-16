@@ -32,7 +32,7 @@ pub trait SeriesTrait {
     }
 
     /// Rename series.
-    fn rename(&mut self, _name: &str) -> &mut Box<dyn SeriesTrait> {
+    fn rename(&mut self, _name: &str) -> &mut dyn SeriesTrait {
         unimplemented!()
     }
 
@@ -195,7 +195,7 @@ pub trait SeriesTrait {
         ))
     }
 
-    fn append_array(&mut self, _other: ArrayRef) -> Result<&mut Box<dyn SeriesTrait>> {
+    fn append_array(&mut self, _other: ArrayRef) -> Result<&mut dyn SeriesTrait> {
         unimplemented!()
     }
 
@@ -210,7 +210,7 @@ pub trait SeriesTrait {
     }
 
     /// Append a Series of the same type in place.
-    fn append(&mut self, other: &Box<dyn SeriesTrait>) -> Result<&mut Box<dyn SeriesTrait>> {
+    fn append(&mut self, other: &dyn SeriesTrait) -> Result<&mut dyn SeriesTrait> {
         unimplemented!()
     }
 
@@ -226,7 +226,7 @@ pub trait SeriesTrait {
     /// Out of bounds access doesn't Error but will return a Null value
     fn take_iter(
         &self,
-        mut _iter: &dyn Iterator<Item = usize>,
+        _iter: &mut dyn Iterator<Item = usize>,
         _capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
         unimplemented!()
@@ -239,7 +239,7 @@ pub trait SeriesTrait {
     /// This doesn't check any bounds or null validity.
     unsafe fn take_iter_unchecked(
         &self,
-        mut iter: &dyn Iterator<Item = usize>,
+        iter: &mut dyn Iterator<Item = usize>,
         capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
         unimplemented!()
@@ -260,7 +260,7 @@ pub trait SeriesTrait {
     /// This doesn't check any bounds or null validity.
     unsafe fn take_opt_iter_unchecked(
         &self,
-        mut iter: &dyn Iterator<Item = Option<usize>>,
+        iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
         unimplemented!()
@@ -273,7 +273,7 @@ pub trait SeriesTrait {
     /// Out of bounds access doesn't Error but will return a Null value
     fn take_opt_iter(
         &self,
-        mut iter: &dyn Iterator<Item = Option<usize>>,
+        iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
         unimplemented!()
@@ -352,7 +352,7 @@ pub trait SeriesTrait {
     }
 
     /// Sort in place.
-    fn sort_in_place(&mut self, reverse: bool) -> &mut Box<dyn SeriesTrait> {
+    fn sort_in_place(&mut self, reverse: bool) -> &mut dyn SeriesTrait {
         unimplemented!()
     }
 
@@ -802,7 +802,8 @@ macro_rules! unpack_series {
 impl Series {
     /// Get Arrow ArrayData
     pub fn array_data(&self) -> Vec<ArrayDataRef> {
-        apply_method_all_arrow_series!(self, array_data,)
+        // apply_method_all_arrow_series!(self, array_data,)
+        unimplemented!()
     }
 
     pub fn from_chunked_array<T: PolarsDataType>(ca: ChunkedArray<T>) -> Self {

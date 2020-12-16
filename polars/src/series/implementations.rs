@@ -1,34 +1,60 @@
 use super::SeriesTrait;
+use crate::datatypes::ArrowDataType;
 use crate::prelude::*;
 use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
+use regex::internal::Input;
+
+impl<'a, T> AsRef<ChunkedArray<T>> for dyn SeriesTrait + 'a
+where
+    T: 'static + PolarsDataType,
+{
+    fn as_ref(&self) -> &ChunkedArray<T> {
+        if &T::get_data_type() == self.dtype() {
+            unsafe { &*(self as *const dyn SeriesTrait as *const ChunkedArray<T>) }
+        } else {
+            panic!("implementation error")
+        }
+    }
+}
 
 impl<T> SeriesTrait for ChunkedArray<T>
 where
-    T: PolarsDataType,
+    T: 'static + PolarsDataType,
+    ChunkedArray<T>: ChunkFilter<T>
+        + ChunkTake
+        + ChunkOps
+        + ChunkExpandAtIndex<T>
+        + ToDummies<T>
+        + ChunkUnique<T>
+        + ChunkSort<T>
+        + ChunkReverse<T>
+        + ChunkShift<T>
+        + ChunkFillNone,
 {
     fn array_data(&self) -> Vec<ArrayDataRef> {
-        unimplemented!()
+        self.array_data()
     }
 
     /// Get the lengths of the underlying chunks
     fn chunk_lengths(&self) -> &Vec<usize> {
-        unimplemented!()
+        self.chunk_id()
     }
     /// Name of series.
     fn name(&self) -> &str {
-        unimplemented!()
+        self.name()
     }
 
     /// Rename series.
-    fn rename(&mut self, _name: &str) -> &mut Box<dyn SeriesTrait> {
-        unimplemented!()
+    fn rename(&mut self, name: &str) -> &mut dyn SeriesTrait {
+        self.rename(name);
+        self
     }
 
     /// Get field (used in schema)
     fn field(&self) -> &Field {
-        unimplemented!()
+        self.ref_field()
     }
 
     /// Get datatype of series.
@@ -38,7 +64,7 @@ where
 
     /// Underlying chunks.
     fn chunks(&self) -> &Vec<ArrayRef> {
-        unimplemented!()
+        self.chunks()
     }
 
     /// No. of chunks
@@ -47,11 +73,33 @@ where
     }
 
     fn i8(&self) -> Result<&Int8Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::Int8) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Int8Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into i8",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     fn i16(&self) -> Result<&Int16Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::Int16) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Int16Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into i16",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
@@ -185,28 +233,39 @@ where
         ))
     }
 
-    fn append_array(&mut self, _other: ArrayRef) -> Result<&mut Box<dyn SeriesTrait>> {
-        unimplemented!()
+    fn append_array(&mut self, other: ArrayRef) -> Result<&mut dyn SeriesTrait> {
+        self.append_array(other)?;
+        Ok(self)
     }
 
     /// Take `num_elements` from the top as a zero copy view.
-    fn limit(&self, _num_elements: usize) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+    fn limit(&self, num_elements: usize) -> Result<Box<dyn SeriesTrait>> {
+        self.limit(num_elements)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Get a zero copy view of the data.
     fn slice(&self, offset: usize, length: usize) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        self.slice(offset, length)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Append a Series of the same type in place.
-    fn append(&mut self, other: &Box<dyn SeriesTrait>) -> Result<&mut Box<dyn SeriesTrait>> {
-        unimplemented!()
+    fn append(&mut self, other: &dyn SeriesTrait) -> Result<&mut dyn SeriesTrait> {
+        if self.dtype() == other.dtype() {
+            // todo! add object
+            self.append(other.as_ref());
+            Ok(self)
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                "cannot append Series; data types don't match".into(),
+            ))
+        }
     }
 
     /// Filter by boolean mask. This operation clones data.
-    fn filter(&self, _filter: &BooleanChunked) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+    fn filter(&self, filter: &BooleanChunked) -> Result<Box<dyn SeriesTrait>> {
+        ChunkFilter::filter(self, filter).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -216,10 +275,10 @@ where
     /// Out of bounds access doesn't Error but will return a Null value
     fn take_iter(
         &self,
-        mut _iter: &dyn Iterator<Item = usize>,
-        _capacity: Option<usize>,
+        iter: &mut dyn Iterator<Item = usize>,
+        capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkTake::take(self, iter, capacity))
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -229,10 +288,10 @@ where
     /// This doesn't check any bounds or null validity.
     unsafe fn take_iter_unchecked(
         &self,
-        mut iter: &dyn Iterator<Item = usize>,
+        iter: &mut dyn Iterator<Item = usize>,
         capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkTake::take_unchecked(self, iter, capacity))
     }
 
     /// Take by index if ChunkedArray contains a single chunk.
@@ -240,7 +299,8 @@ where
     /// # Safety
     /// This doesn't check any bounds. Null validity is checked.
     unsafe fn take_from_single_chunked(&self, idx: &UInt32Chunked) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkTake::take_from_single_chunked(self, idx)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -250,10 +310,10 @@ where
     /// This doesn't check any bounds or null validity.
     unsafe fn take_opt_iter_unchecked(
         &self,
-        mut iter: &dyn Iterator<Item = Option<usize>>,
+        iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkTake::take_opt_unchecked(self, iter, capacity))
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -263,10 +323,10 @@ where
     /// Out of bounds access doesn't Error but will return a Null value
     fn take_opt_iter(
         &self,
-        mut iter: &dyn Iterator<Item = Option<usize>>,
+        iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
     ) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkTake::take_opt(self, iter, capacity))
     }
 
     /// Take by index. This operation is clone.
@@ -275,37 +335,43 @@ where
     ///
     /// Out of bounds access doesn't Error but will return a Null value
     fn take(&self, indices: &dyn AsTakeIndex) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        let mut iter = indices.as_take_iter();
+        let capacity = indices.take_index_len();
+        self.take_iter(&mut iter, Some(capacity))
     }
 
     /// Get length of series.
     fn len(&self) -> usize {
-        unimplemented!()
+        self.len()
     }
 
     /// Check if Series is empty.
     fn is_empty(&self) -> bool {
-        unimplemented!()
+        self.is_empty()
     }
 
     /// Aggregate all chunks to a contiguous array of memory.
     fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkOps::rechunk(self, chunk_lengths).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Get the head of the Series.
     fn head(&self, length: Option<usize>) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(self.head(length))
     }
 
     /// Get the tail of the Series.
     fn tail(&self, length: Option<usize>) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(self.tail(length))
     }
 
     /// Drop all null values and return a new Series.
     fn drop_nulls(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        if self.null_count() == 0 {
+            Box::new(self.clone())
+        } else {
+            Box::new(ChunkFilter::filter(self, &self.is_not_null()).unwrap())
+        }
     }
 
     /// Create a new Series filled with values at that index.
@@ -319,7 +385,7 @@ where
     /// assert_eq!(Vec::from(expanded.i32().unwrap()), &[Some(8), Some(8), Some(8), Some(8)])
     /// ```
     fn expand_at_index(&self, index: usize, length: usize) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkExpandAtIndex::expand_at_index(self, index, length))
     }
 
     fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Box<dyn SeriesTrait>> {
@@ -328,51 +394,52 @@ where
 
     /// Create dummy variables. See [DataFrame](DataFrame::to_dummies)
     fn to_dummies(&self) -> Result<DataFrame> {
-        unimplemented!()
+        ToDummies::to_dummies(self)
     }
 
     fn value_counts(&self) -> Result<DataFrame> {
-        unimplemented!()
+        ChunkUnique::value_counts(self)
     }
 
     /// Get a single value by index. Don't use this operation for loops as a runtime cast is
     /// needed for every iteration.
     fn get(&self, index: usize) -> AnyType {
-        unimplemented!()
+        self.get_any(index)
     }
 
     /// Sort in place.
-    fn sort_in_place(&mut self, reverse: bool) -> &mut Box<dyn SeriesTrait> {
-        unimplemented!()
+    fn sort_in_place(&mut self, reverse: bool) -> &mut dyn SeriesTrait {
+        ChunkSort::sort_in_place(self, reverse);
+        self
     }
 
     fn sort(&self, reverse: bool) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkSort::sort(self, reverse))
     }
 
     /// Retrieve the indexes needed for a sort.
     fn argsort(&self, reverse: bool) -> Vec<usize> {
-        unimplemented!()
+        ChunkSort::argsort(self, reverse)
     }
 
     /// Count the null values.
     fn null_count(&self) -> usize {
-        unimplemented!()
+        self.null_count()
     }
 
     /// Get unique values in the Series.
     fn unique(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkUnique::unique(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Get unique values in the Series.
     fn n_unique(&self) -> Result<usize> {
-        unimplemented!()
+        ChunkUnique::n_unique(self)
     }
 
     /// Get first indexes of unique values.
     fn arg_unique(&self) -> Result<Vec<usize>> {
-        unimplemented!()
+        ChunkUnique::arg_unique(self)
     }
 
     /// Get indexes that evaluate true
@@ -382,32 +449,32 @@ where
 
     /// Get a mask of the null values.
     fn is_null(&self) -> BooleanChunked {
-        unimplemented!()
+        self.is_null()
     }
 
     /// Get a mask of the non-null values.
     fn is_not_null(&self) -> BooleanChunked {
-        unimplemented!()
+        self.is_not_null()
     }
 
     /// Get a mask of all the unique values.
     fn is_unique(&self) -> Result<BooleanChunked> {
-        unimplemented!()
+        ChunkUnique::is_unique(self)
     }
 
     /// Get a mask of all the duplicated values.
     fn is_duplicated(&self) -> Result<BooleanChunked> {
-        unimplemented!()
+        ChunkUnique::is_duplicated(self)
     }
 
     /// Get the bits that represent the null values of the underlying ChunkedArray
     fn null_bits(&self) -> Vec<(usize, Option<Buffer>)> {
-        unimplemented!()
+        self.null_bits()
     }
 
     /// return a Series in reversed order
     fn reverse(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        Box::new(ChunkReverse::reverse(self))
     }
 
     /// Rechunk and return a pointer to the start of the Series.
@@ -443,7 +510,7 @@ where
     /// example();
     /// ```
     fn shift(&self, periods: i32) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkShift::shift(self, periods).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Replace None values with one of the following strategies:
@@ -483,7 +550,7 @@ where
     /// example();
     /// ```
     fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkFillNone::fill_none(self, strategy).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
