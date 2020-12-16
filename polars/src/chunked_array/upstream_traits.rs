@@ -199,9 +199,9 @@ impl FromIterator<Series> for ListChunked {
         let v = it.next().unwrap();
         let mut builder = get_list_builder(v.dtype(), capacity, "collected");
 
-        builder.append_opt_series(&Some(v));
+        builder.append_opt_series(Some(&v));
         for s in it {
-            builder.append_opt_series(&Some(s));
+            builder.append_opt_series(Some(&s));
         }
         builder.finish()
     }
@@ -259,7 +259,7 @@ macro_rules! impl_from_iter_opt_series {
 
         // first fill all None's we encountered
         while cnt > 0 {
-            builder.append_opt_series(&None);
+            builder.append_opt_series(None);
             cnt -= 1;
         }
 
@@ -268,7 +268,7 @@ macro_rules! impl_from_iter_opt_series {
 
         // now we have added all Nones, we can consume the rest of the iterator.
         for opt_s in it {
-            builder.append_opt_series(&opt_s);
+            builder.append_opt_series(opt_s.as_ref());
         }
 
         builder.finish()

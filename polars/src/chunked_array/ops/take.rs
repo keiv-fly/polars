@@ -416,7 +416,7 @@ impl ChunkTake for ListChunked {
                 let taker = self.take_rand();
 
                 for idx in indices {
-                    builder.append_opt_series(&taker.get(idx));
+                    builder.append_opt_series(taker.get(idx).as_ref());
                 }
                 builder.finish()
             }
@@ -441,7 +441,7 @@ impl ChunkTake for ListChunked {
                 let taker = self.take_rand();
                 for idx in indices {
                     let v = taker.get_unchecked(idx);
-                    builder.append_opt_series(&Some(v));
+                    builder.append_opt_series(Some(&v));
                 }
                 builder.finish()
             }
@@ -469,9 +469,9 @@ impl ChunkTake for ListChunked {
                     match opt_idx {
                         Some(idx) => {
                             let opt_s = taker.get(idx);
-                            builder.append_opt_series(&opt_s)
+                            builder.append_opt_series(opt_s.as_ref())
                         }
-                        None => builder.append_opt_series(&None),
+                        None => builder.append_opt_series(None),
                     };
                 }
                 builder.finish()
@@ -499,9 +499,9 @@ impl ChunkTake for ListChunked {
                     match opt_idx {
                         Some(idx) => {
                             let s = taker.get_unchecked(idx);
-                            builder.append_opt_series(&Some(s))
+                            builder.append_opt_series(Some(&s))
                         }
-                        None => builder.append_opt_series(&None),
+                        None => builder.append_opt_series(None),
                     };
                 }
                 builder.finish()
