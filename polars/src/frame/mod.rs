@@ -2,20 +2,20 @@
 use crate::chunked_array::ops::unique::is_unique_helper;
 use crate::frame::select::Selection;
 use crate::prelude::*;
+use crate::series::implementations::Wrap;
+use crate::series::SeriesTrait;
 use crate::utils::{accumulate_dataframes_horizontal, Xob};
 use ahash::RandomState;
 use arrow::datatypes::{Field, Schema};
 use arrow::record_batch::RecordBatch;
+use num::traits::Bounded;
 use rayon::prelude::*;
 use std::collections::HashSet;
+use std::fmt::Display;
+use std::hash::Hash;
 use std::marker::Sized;
 use std::mem;
 use std::sync::Arc;
-use crate::series::SeriesTrait;
-use crate::series::implementations::Wrap;
-use std::hash::Hash;
-use std::fmt::Display;
-use num::traits::Bounded;
 
 mod arithmetic;
 pub mod explode;
@@ -63,8 +63,9 @@ impl IntoSeries for ListChunked {
     }
 }
 impl<T> IntoSeries for ChunkedArray<T>
-where T: PolarsIntegerType,
-T::Native: Hash + Eq + Display + Bounded + NumComp
+where
+    T: PolarsIntegerType,
+    T::Native: Hash + Eq + Display + Bounded + NumComp,
 {
     fn into_series(self) -> Arc<dyn SeriesTrait> {
         Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
@@ -168,7 +169,8 @@ impl DataFrame {
 
     /// Aggregate all chunks to contiguous memory.
     pub fn agg_chunks(&self) -> Self {
-        let f = |s: &Arc<dyn SeriesTrait>| s.rechunk(Some(&[1])).expect("can always rechunk to single");
+        let f =
+            |s: &Arc<dyn SeriesTrait>| s.rechunk(Some(&[1])).expect("can always rechunk to single");
         // breakpoint for parallel aggregation
         let bp = std::env::var("POLARS_PAR_COLUMN_BP")
             .unwrap_or_else(|_| "".to_string())
@@ -343,7 +345,10 @@ impl DataFrame {
         self.shape().0
     }
 
-    pub(crate) fn hstack_mut_no_checks(&mut self, columns: &[Arc<dyn SeriesTrait>]) -> Result<&mut Self> {
+    pub(crate) fn hstack_mut_no_checks(
+        &mut self,
+        columns: &[Arc<dyn SeriesTrait>],
+    ) -> Result<&mut Self> {
         for col in columns {
             self.columns.push(col.clone());
         }
@@ -488,7 +493,11 @@ impl DataFrame {
         Ok(DataFrame::new_no_checks(new_cols))
     }
 
-    fn insert_at_idx_no_name_check(&mut self, index: usize, series: Arc<dyn SeriesTrait>) -> Result<&mut Self> {
+    fn insert_at_idx_no_name_check(
+        &mut self,
+        index: usize,
+        series: Arc<dyn SeriesTrait>,
+    ) -> Result<&mut Self> {
         if series.len() == self.height() {
             self.columns.insert(index, series);
             Ok(self)

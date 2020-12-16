@@ -99,12 +99,6 @@ impl IntoGroupTuples for Float32Chunked {
 impl IntoGroupTuples for ListChunked {}
 impl<T> IntoGroupTuples for ObjectChunked<T> {}
 
-impl IntoGroupTuples for Series {
-    fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
-        apply_method_all_arrow_series!(self, group_tuples,)
-    }
-}
-
 /// Utility enum used for grouping on multiple columns
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 enum Groupable<'a> {
@@ -165,6 +159,58 @@ where
 {
     let iter = ca.into_iter().map(|opt_v| opt_v.map(|v| v.into()));
     Box::new(iter)
+}
+
+impl dyn SeriesTrait {
+    fn as_groupable_iter<'a>(&'a self) -> Result<Box<dyn Iterator<Item = Option<Groupable>> + 'a>> {
+        macro_rules! as_groupable_iter {
+            ($ca:expr, $variant:ident ) => {{
+                let bx = Box::new($ca.into_iter().map(|opt_b| opt_b.map(Groupable::$variant)));
+                Ok(bx)
+            }};
+        }
+
+        match self.dtype() {
+            ArrowDataType::Boolean => as_groupable_iter!(self.bool().unwrap(), Boolean),
+            ArrowDataType::UInt8 => as_groupable_iter!(self.u8().unwrap(), UInt8),
+            ArrowDataType::UInt16 => as_groupable_iter!(self.u16().unwrap(), UInt16),
+            ArrowDataType::UInt32 => as_groupable_iter!(self.u32().unwrap(), UInt32),
+            ArrowDataType::UInt64 => as_groupable_iter!(self.u64().unwrap(), UInt64),
+            ArrowDataType::Int8 => as_groupable_iter!(self.i8().unwrap(), Int8),
+            ArrowDataType::Int16 => as_groupable_iter!(self.i16().unwrap(), Int16),
+            ArrowDataType::Int32 => as_groupable_iter!(self.i32().unwrap(), Int32),
+            ArrowDataType::Int64 => as_groupable_iter!(self.i64().unwrap(), Int64),
+            ArrowDataType::Date32(DateUnit::Day) => {
+                as_groupable_iter!(self.date32().unwrap(), Int32)
+            }
+            ArrowDataType::Date64(DateUnit::Millisecond) => {
+                as_groupable_iter!(self.date64().unwrap(), Int64)
+            }
+            ArrowDataType::Time64(TimeUnit::Nanosecond) => {
+                as_groupable_iter!(self.time64_nanosecond().unwrap(), Int64)
+            }
+            ArrowDataType::Duration(TimeUnit::Nanosecond) => {
+                as_groupable_iter!(self.duration_nanosecond().unwrap(), Int64)
+            }
+            ArrowDataType::Duration(TimeUnit::Millisecond) => {
+                as_groupable_iter!(self.duration_millisecond().unwrap(), Int64)
+            }
+            #[cfg(feature = "dtype-interval")]
+            ArrowDataType::Interval(IntervalUnit::DayTime) => {
+                as_groupable_iter!(self.interval_daytime().unwrap(), Int64)
+            }
+            #[cfg(feature = "dtype-interval")]
+            ArrowDataType::Interval(IntervalUnit::YearMonth) => {
+                as_groupable_iter!(self.interval_year_month().unwrap(), Int32)
+            }
+            ArrowDataType::Utf8 => as_groupable_iter!(self.utf8().unwrap(), Utf8),
+            ArrowDataType::Float32 => Ok(float_to_groupable_iter(self.f32().unwrap())),
+            ArrowDataType::Float64 => Ok(float_to_groupable_iter(self.f64().unwrap())),
+            dt => Err(PolarsError::Other(
+                format!("Column with dtype {:?} is not groupable", dt).into(),
+            )),
+        }
+    }
 }
 
 impl Series {
@@ -347,7 +393,7 @@ impl DataFrame {
 #[derive(Debug, Clone)]
 pub struct GroupBy<'df, 'selection_str> {
     df: &'df DataFrame,
-    selected_keys: Vec<Series>,
+    selected_keys: Vec<Arc<dyn SeriesTrait>>,
     // [first idx, [other idx]]
     pub(crate) groups: Vec<(usize, Vec<usize>)>,
     // columns selected for aggregation
@@ -355,16 +401,16 @@ pub struct GroupBy<'df, 'selection_str> {
 }
 
 pub(crate) trait NumericAggSync {
-    fn agg_mean(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_mean(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
-    fn agg_min(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_min(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
-    fn agg_max(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_max(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
-    fn agg_sum(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_sum(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
 }
@@ -378,31 +424,31 @@ impl<T> NumericAggSync for ChunkedArray<T>
 where
     T: PolarsNumericType + Sync,
     T::Native: std::ops::Add<Output = T::Native> + Num + NumCast,
+    ChunkedArray<T>: IntoSeries,
 {
-    fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
-        Some(Series::Float64(
-            groups
-                .par_iter()
-                .map(|(_first, idx)| {
-                    // Fast path
-                    if let Ok(slice) = self.cont_slice() {
-                        let mut sum = 0.;
-                        for i in idx {
-                            sum += slice[*i].to_f64().unwrap()
-                        }
-                        Some(sum / idx.len() as f64)
-                    } else {
-                        let take =
-                            unsafe { self.take_unchecked(idx.iter().copied(), Some(self.len())) };
-                        let opt_sum: Option<T::Native> = take.sum();
-                        opt_sum.map(|sum| sum.to_f64().unwrap() / idx.len() as f64)
+    fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        let ca: Float64Chunked = groups
+            .par_iter()
+            .map(|(_first, idx)| {
+                // Fast path
+                if let Ok(slice) = self.cont_slice() {
+                    let mut sum = 0.;
+                    for i in idx {
+                        sum += slice[*i].to_f64().unwrap()
                     }
-                })
-                .collect(),
-        ))
+                    Some(sum / idx.len() as f64)
+                } else {
+                    let take =
+                        unsafe { self.take_unchecked(idx.iter().copied(), Some(self.len())) };
+                    let opt_sum: Option<T::Native> = take.sum();
+                    opt_sum.map(|sum| sum.to_f64().unwrap() / idx.len() as f64)
+                }
+            })
+            .collect();
+        Some(ca.into_series())
     }
 
-    fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         Some(
             groups
                 .par_iter()
@@ -435,7 +481,7 @@ where
         )
     }
 
-    fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         Some(
             groups
                 .par_iter()
@@ -468,7 +514,7 @@ where
         )
     }
 
-    fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         Some(
             groups
                 .par_iter()
@@ -492,7 +538,7 @@ where
 }
 
 pub(crate) trait AggFirst {
-    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Series;
+    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
 }
 
 macro_rules! impl_agg_first {
@@ -508,32 +554,33 @@ macro_rules! impl_agg_first {
 impl<T> AggFirst for ChunkedArray<T>
 where
     T: PolarsPrimitiveType + Send,
+    ChunkedArray<T>: IntoSeries,
 {
-    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         impl_agg_first!(self, groups, ChunkedArray<T>)
     }
 }
 
 impl AggFirst for Utf8Chunked {
-    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         impl_agg_first!(self, groups, Utf8Chunked)
     }
 }
 
 impl AggFirst for ListChunked {
-    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         impl_agg_first!(self, groups, ListChunked)
     }
 }
 
 impl<T> AggFirst for ObjectChunked<T> {
-    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         todo!()
     }
 }
 
 pub(crate) trait AggLast {
-    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Series;
+    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
 }
 
 macro_rules! impl_agg_last {
@@ -549,26 +596,27 @@ macro_rules! impl_agg_last {
 impl<T> AggLast for ChunkedArray<T>
 where
     T: PolarsPrimitiveType + Send,
+    ChunkedArray<T>: IntoSeries,
 {
-    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         impl_agg_last!(self, groups, ChunkedArray<T>)
     }
 }
 
 impl AggLast for Utf8Chunked {
-    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         impl_agg_last!(self, groups, Utf8Chunked)
     }
 }
 
 impl AggLast for ListChunked {
-    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         impl_agg_last!(self, groups, ListChunked)
     }
 }
 
 impl<T> AggLast for ObjectChunked<T> {
-    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Series {
+    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
         todo!()
     }
 }
@@ -642,6 +690,7 @@ pub(crate) trait AggList {
 impl<T> AggList for ChunkedArray<T>
 where
     T: PolarsDataType,
+    ChunkedArray<T>: IntoSeries,
 {
     fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         macro_rules! impl_gb {
@@ -651,7 +700,7 @@ where
                     ListPrimitiveChunkedBuilder::new("", values_builder, groups.len());
                 for (_first, idx) in groups {
                     let s = unsafe {
-                        $agg_col.take_iter_unchecked(idx.into_iter().copied(), Some(idx.len()))
+                        $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
                     builder.append_opt_series(Some(&s))
                 }
@@ -665,7 +714,7 @@ where
                 let mut builder = ListUtf8ChunkedBuilder::new("", values_builder, groups.len());
                 for (_first, idx) in groups {
                     let s = unsafe {
-                        $agg_col.take_iter_unchecked(idx.into_iter().copied(), Some(idx.len()))
+                        $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
                     builder.append_series(&s)
                 }

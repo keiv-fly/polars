@@ -352,9 +352,9 @@ impl HashJoin<Utf8Type> for Utf8Chunked {
 pub trait ZipOuterJoinColumn {
     fn zip_outer_join_column(
         &self,
-        _right_column: &Series,
+        _right_column: &dyn SeriesTrait,
         _opt_join_tuples: &[(Option<usize>, Option<usize>)],
-    ) -> Series {
+    ) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
 }
@@ -365,9 +365,9 @@ where
 {
     fn zip_outer_join_column(
         &self,
-        right_column: &Series,
+        right_column: &dyn SeriesTrait,
         opt_join_tuples: &[(Option<usize>, Option<usize>)],
-    ) -> Series {
+    ) -> Arc<dyn SeriesTrait> {
         let right_ca = self.unpack_series_matching_type(right_column).unwrap();
 
         let left_rand_access = self.take_rand();
@@ -401,9 +401,9 @@ macro_rules! impl_zip_outer_join {
         impl ZipOuterJoinColumn for $chunkedtype {
             fn zip_outer_join_column(
                 &self,
-                right_column: &Series,
+                right_column: &dyn SeriesTrait,
                 opt_join_tuples: &[(Option<usize>, Option<usize>)],
-            ) -> Series {
+            ) -> Arc<dyn SeriesTrait> {
                 let right_ca = self.unpack_series_matching_type(right_column).unwrap();
 
                 let left_rand_access = self.take_rand();

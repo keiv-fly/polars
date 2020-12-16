@@ -1,5 +1,6 @@
 use crate::chunked_array::object::ObjectType;
 use crate::prelude::*;
+use crate::series::SeriesTrait;
 use crate::utils::{floating_encode_f64, integer_decode_f64, Xob};
 use crate::{chunked_array::float::IntegerDecode, frame::group_by::IntoGroupTuples};
 use ahash::RandomState;
@@ -9,7 +10,6 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::hash::Hash;
-use crate::series::SeriesTrait;
 
 pub(crate) fn is_unique_helper(
     mut groups: Vec<(usize, Vec<usize>)>,

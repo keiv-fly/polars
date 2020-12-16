@@ -1,3 +1,4 @@
+use crate::series::SeriesTrait;
 use crate::{prelude::*, utils::Xob};
 use arrow::compute::{
     eq_scalar, eq_utf8_scalar, gt_eq_scalar, gt_eq_utf8_scalar, gt_scalar, gt_utf8_scalar,
@@ -11,7 +12,6 @@ use arrow::{
 use num::{Num, NumCast, ToPrimitive};
 use std::ops::{BitAnd, BitOr, Not};
 use std::sync::Arc;
-use crate::series::SeriesTrait;
 
 impl<T> ChunkedArray<T>
 where

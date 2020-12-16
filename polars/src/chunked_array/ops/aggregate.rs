@@ -2,13 +2,13 @@
 use crate::chunked_array::builder::get_list_builder;
 use crate::chunked_array::ChunkedArray;
 use crate::datatypes::BooleanChunked;
+use crate::series::implementations::Wrap;
 use crate::series::SeriesTrait;
 use crate::{datatypes::PolarsNumericType, prelude::*};
 use arrow::compute;
 use num::{Bounded, Num, NumCast, ToPrimitive};
 use std::cmp::{Ordering, PartialOrd};
 use std::sync::Arc;
-use crate::series::implementations::Wrap;
 
 /// Aggregations that return Series of unit length. Those can be used in broadcasting operations.
 pub trait ChunkAggSeries {

@@ -89,7 +89,7 @@ pub type IntervalDayTimeChunked = ChunkedArray<IntervalDayTimeType>;
 #[cfg(feature = "dtype-interval")]
 pub type IntervalYearMonthChunked = ChunkedArray<IntervalYearMonthType>;
 
-pub trait PolarsPrimitiveType: ArrowPrimitiveType + Send + Sync{}
+pub trait PolarsPrimitiveType: ArrowPrimitiveType + Send + Sync {}
 impl PolarsPrimitiveType for BooleanType {}
 impl PolarsPrimitiveType for UInt8Type {}
 impl PolarsPrimitiveType for UInt16Type {}

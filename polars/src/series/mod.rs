@@ -14,10 +14,12 @@ pub mod ops;
 use self::ops::SeriesOps;
 use crate::chunked_array::builder::get_list_builder;
 use crate::fmt::FmtList;
+use crate::frame::group_by::IntoGroupTuples;
 use arrow::array::ArrayDataRef;
 use std::sync::Arc;
 
 pub trait SeriesTrait: Send + Sync {
+    fn group_tuples(&self) -> Vec<(usize, Vec<usize>)>;
     /// Get Arrow ArrayData
     fn array_data(&self) -> Vec<ArrayDataRef> {
         unimplemented!()

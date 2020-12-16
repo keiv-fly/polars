@@ -31,12 +31,12 @@ pub use crate::{
     },
     series::{
         arithmetic::{LhsNumOps, NumOpsDispatch},
-        NamedFrom, Series, SeriesTrait
+        NamedFrom, Series, SeriesTrait,
     },
     testing::*,
 };
-pub use std::sync::Arc;
 pub use arrow::datatypes::{ArrowPrimitiveType, Field, Schema};
+pub use std::sync::Arc;
 
 #[cfg(feature = "temporal")]
 pub use crate::chunked_array::temporal::conversion::*;

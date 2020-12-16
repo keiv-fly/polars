@@ -173,6 +173,12 @@ where
     }
 }
 
+impl Debug for dyn SeriesTrait {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
+}
+
 impl Debug for Series {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let limit = set_limit!(self);

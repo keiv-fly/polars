@@ -48,11 +48,13 @@ where
         + ChunkAggSeries
         + VarAggSeries,
 {
+    fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
+        self.group_tuples()
+    }
     fn array_data(&self) -> Vec<ArrayDataRef> {
         self.array_data()
     }
 
-    /// Get the lengths of the underlying chunks
     fn chunk_lengths(&self) -> &Vec<usize> {
         self.chunk_id()
     }
