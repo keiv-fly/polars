@@ -23,7 +23,7 @@ pub trait ChunkBytes {
     fn to_byte_slices(&self) -> Vec<&[u8]>;
 }
 
-pub trait ChunkWindow<T> {
+pub trait ChunkWindow {
     /// Apply a rolling sum (moving sum) over the values in this array.
     /// A window of length `window_size` will traverse the array. The values that fill this window
     /// will (optionally) be multiplied with the weights given by the `weight` vector. The resulting
@@ -130,7 +130,9 @@ pub trait ChunkWindow<T> {
             "rolling mean not supported for this datatype".into(),
         ))
     }
+}
 
+pub trait ChunkWindowCustom<T> {
     /// Apply a rolling aggregation over the values in this array.
     ///
     /// A window of length `window_size` will traverse the array. The values that fill this window

@@ -31,7 +31,10 @@ where
         + ChunkSort<T>
         + ChunkReverse<T>
         + ChunkShift<T>
-        + ChunkFillNone,
+        + ChunkFillNone
+        + ChunkZip<T>
+        + ChunkCast
+        + ChunkWindow,
 {
     fn array_data(&self) -> Vec<ArrayDataRef> {
         self.array_data()
@@ -117,120 +120,307 @@ where
     /// }).collect();
     /// ```
     fn i32(&self) -> Result<&Int32Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::Int32) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Int32Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into i32",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn i64(&self) -> Result<&Int64Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::Int64) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Int64Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into i64",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn f32(&self) -> Result<&Float32Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::Float32) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Float32Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into f32",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn f64(&self) -> Result<&Float64Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::Float64) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Float64Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into f64",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn u8(&self) -> Result<&UInt8Chunked> {
-        unimplemented!()
+        if matches!(T::get_data_type(), ArrowDataType::UInt8) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const UInt8Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into u8",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn u16(&self) -> Result<&UInt16Chunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== u16", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::UInt16) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const UInt16Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into u16",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn u32(&self) -> Result<&UInt32Chunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== u32", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::UInt32) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const UInt32Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into u32",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn u64(&self) -> Result<&UInt64Chunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== u32", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::UInt64) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const UInt64Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into u64",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn bool(&self) -> Result<&BooleanChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== bool", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::Boolean) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const BooleanChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into bool",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn utf8(&self) -> Result<&Utf8Chunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== utf8", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::Utf8) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Utf8Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into utf8",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn date32(&self) -> Result<&Date32Chunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== date32", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::Date32(DateUnit::Day)) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Date32Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into date32",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn date64(&self) -> Result<&Date64Chunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== date64", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::Date64(DateUnit::Day)) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Date64Chunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into date64",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn time64_nanosecond(&self) -> Result<&Time64NanosecondChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== time64", self.dtype()).into(),
-        ))
+        if matches!(
+            T::get_data_type(),
+            ArrowDataType::Time64(TimeUnit::Nanosecond)
+        ) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Time64NanosecondChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into time64",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn duration_nanosecond(&self) -> Result<&DurationNanosecondChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== duration_nanosecond", self.dtype()).into(),
-        ))
+        if matches!(
+            T::get_data_type(),
+            ArrowDataType::Duration(TimeUnit::Nanosecond)
+        ) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const DurationNanosecondChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into duration_nanosecond",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn duration_millisecond(&self) -> Result<&DurationMillisecondChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== duration_millisecond", self.dtype()).into(),
-        ))
+        if matches!(
+            T::get_data_type(),
+            ArrowDataType::Duration(TimeUnit::Millisecond)
+        ) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const DurationMillisecondChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into duration_millisecond",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     #[cfg(feature = "dtype-interval")]
     fn interval_daytime(&self) -> Result<&IntervalDayTimeChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== interval_daytime", self.dtype()).into(),
-        ))
+        if matches!(
+            T::get_data_type(),
+            ArrowDataType::Interval(IntervalUnit::DayTime)
+        ) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const IntervalDayTimeChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into interval_daytime",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     #[cfg(feature = "dtype-interval")]
     fn interval_year_month(&self) -> Result<&IntervalYearMonthChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== interval_yearmonth", self.dtype()).into(),
-        ))
+        if matches!(
+            T::get_data_type(),
+            ArrowDataType::Interval(IntervalUnit::YearMonth)
+        ) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const IntervalYearMonthChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into interval_year_month",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     /// Unpack to ChunkedArray
     fn list(&self) -> Result<&ListChunked> {
-        Err(PolarsError::DataTypeMisMatch(
-            format!("{:?} !== list", self.dtype()).into(),
-        ))
+        if matches!(T::get_data_type(), ArrowDataType::List(_)) {
+            unsafe { Ok(&*(self as *const dyn SeriesTrait as *const ListChunked)) }
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                format!(
+                    "cannot unpack Series: {:?} of type {:?} into list",
+                    self.name(),
+                    self.dtype(),
+                )
+                .into(),
+            ))
+        }
     }
 
     fn append_array(&mut self, other: ArrayRef) -> Result<&mut dyn SeriesTrait> {
@@ -389,7 +579,69 @@ where
     }
 
     fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        use ArrowDataType::*;
+        match data_type {
+            Boolean => {
+                ChunkCast::cast::<BooleanType>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Utf8 => {
+                ChunkCast::cast::<Utf8Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            UInt8 => {
+                ChunkCast::cast::<UInt8Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            UInt16 => {
+                ChunkCast::cast::<UInt16Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            UInt32 => {
+                ChunkCast::cast::<UInt32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            UInt64 => {
+                ChunkCast::cast::<UInt64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Int8 => {
+                ChunkCast::cast::<Int8Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Int16 => {
+                ChunkCast::cast::<Int16Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Int32 => {
+                ChunkCast::cast::<Int32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Int64 => {
+                ChunkCast::cast::<Int64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Float32 => {
+                ChunkCast::cast::<Float32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Float64 => {
+                ChunkCast::cast::<Float64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Date32(_) => {
+                ChunkCast::cast::<Date32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Date64(_) => {
+                ChunkCast::cast::<Date64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            Time64(TimeUnit::Nanosecond) => ChunkCast::cast::<Time64NanosecondType>(self)
+                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+            Duration(TimeUnit::Nanosecond) => ChunkCast::cast::<DurationNanosecondType>(self)
+                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+            Duration(TimeUnit::Millisecond) => ChunkCast::cast::<DurationMillisecondType>(self)
+                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+            #[cfg(feature = "dtype-interval")]
+            Interval(IntervalUnit::DayTime) => ChunkCast::cast::<IntervalDayTimeType>(self)
+                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+            #[cfg(feature = "dtype-interval")]
+            Interval(IntervalUnit::YearMonth) => ChunkCast::cast::<IntervalYearMonthType>(self)
+                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+            List(_) => {
+                ChunkCast::cast::<ListType>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            }
+            dt => Err(PolarsError::Other(
+                format!("Casting to {:?} is not supported", dt).into(),
+            )),
+        }
     }
 
     /// Create dummy variables. See [DataFrame](DataFrame::to_dummies)
@@ -444,7 +696,8 @@ where
 
     /// Get indexes that evaluate true
     fn arg_true(&self) -> Result<UInt32Chunked> {
-        unimplemented!()
+        let ca: &BooleanChunked = self.bool()?;
+        Ok(ca.arg_true())
     }
 
     /// Get a mask of the null values.
@@ -555,51 +808,47 @@ where
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
     /// from `other` where the mask evaluates `false`
-    fn zip_with(&self, mask: &BooleanChunked, other: &Series) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+    fn zip_with(
+        &self,
+        mask: &BooleanChunked,
+        other: &dyn SeriesTrait,
+    ) -> Result<Box<dyn SeriesTrait>> {
+        ChunkZip::zip_with(self, mask, other.as_ref())
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
-    /// Get the sum of the Series as a new Series of length 1.
-    fn sum_as_series(&self) -> Series {
+    fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the max of the Series as a new Series of length 1.
-    fn max_as_series(&self) -> Series {
+    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the min of the Series as a new Series of length 1.
-    fn min_as_series(&self) -> Series {
+    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the mean of the Series as a new Series of length 1.
-    fn mean_as_series(&self) -> Series {
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the median of the Series as a new Series of length 1.
-    fn median_as_series(&self) -> Series {
+    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the variance of the Series as a new Series of length 1.
-    fn var_as_series(&self) -> Series {
+    fn var_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the standard deviation of the Series as a new Series of length 1.
-    fn std_as_series(&self) -> Series {
+    fn std_as_series(&self) -> Box<dyn SeriesTrait> {
         unimplemented!()
     }
-    /// Get the quantile of the ChunkedArray as a new Series of length 1.
-    fn quantile_as_series(&self, quantile: f64) -> Result<Series> {
+    fn quantile_as_series(&self, quantile: f64) -> Result<Box<dyn SeriesTrait>> {
         unimplemented!()
     }
-    /// Apply a rolling mean to a Series. See:
-    /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_mean).
     fn rolling_mean(
         &self,
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
     ) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkWindow::rolling_mean(self, window_size, weight, ignore_null)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
     /// Apply a rolling sum to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_sum).
@@ -609,7 +858,8 @@ where
         weight: Option<&[f64]>,
         ignore_null: bool,
     ) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkWindow::rolling_sum(self, window_size, weight, ignore_null)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
     /// Apply a rolling min to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_min).
@@ -619,7 +869,8 @@ where
         weight: Option<&[f64]>,
         ignore_null: bool,
     ) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkWindow::rolling_min(self, window_size, weight, ignore_null)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
     /// Apply a rolling max to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_max).
@@ -629,7 +880,8 @@ where
         weight: Option<&[f64]>,
         ignore_null: bool,
     ) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkWindow::rolling_max(self, window_size, weight, ignore_null)
+            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
     }
 
     // fn fmt_list(&self) -> String {
@@ -641,7 +893,8 @@ where
     /// Extract hour from underlying NaiveDateTime representation.
     /// Returns the hour number from 0 to 23.
     fn hour(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        self.date64()
+            .map(|ca| Box::new(ca.hour()) as Box<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
@@ -649,7 +902,8 @@ where
     /// Extract minute from underlying NaiveDateTime representation.
     /// Returns the minute number from 0 to 59.
     fn minute(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        self.date64()
+            .map(|ca| Box::new(ca.minute()) as Box<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
@@ -657,7 +911,8 @@ where
     /// Extract second from underlying NaiveDateTime representation.
     /// Returns the second number from 0 to 59.
     fn second(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        self.date64()
+            .map(|ca| Box::new(ca.second()) as Box<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
@@ -666,7 +921,8 @@ where
     /// Returns the number of nanoseconds since the whole non-leap second.
     /// The range from 1,000,000,000 to 1,999,999,999 represents the leap second.
     fn nanosecond(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        self.date64()
+            .map(|ca| Box::new(ca.nanosecond()) as Box<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
@@ -676,7 +932,17 @@ where
     ///
     /// The return value ranges from 1 to 31. (The last day of month differs by months.)
     fn day(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        match T::get_data_type() {
+            ArrowDataType::Date32(_) => self
+                .date32()
+                .map(|ca| Box::new(ca.day()) as Box<dyn SeriesTrait>),
+            ArrowDataType::Date64(_) => self
+                .date64()
+                .map(|ca| Box::new(ca.day()) as Box<dyn SeriesTrait>),
+            _ => Err(PolarsError::InvalidOperation(
+                format!("operation not supported on dtype {:?}", self.dtype()).into(),
+            )),
+        }
     }
 
     #[cfg(feature = "temporal")]
@@ -685,7 +951,17 @@ where
     ///
     /// The return value ranges from 1 to 366. (The last day of year differs by years.)
     fn ordinal_day(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        match T::get_data_type() {
+            ArrowDataType::Date32(_) => self
+                .date32()
+                .map(|ca| Box::new(ca.ordinal()) as Box<dyn SeriesTrait>),
+            ArrowDataType::Date64(_) => self
+                .date64()
+                .map(|ca| Box::new(ca.ordinal()) as Box<dyn SeriesTrait>),
+            _ => Err(PolarsError::InvalidOperation(
+                format!("operation not supported on dtype {:?}", self.dtype()).into(),
+            )),
+        }
     }
 
     #[cfg(feature = "temporal")]
@@ -695,7 +971,17 @@ where
     ///
     /// The return value ranges from 1 to 12.
     fn month(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        match T::get_data_type() {
+            ArrowDataType::Date32(_) => self
+                .date32()
+                .map(|ca| Box::new(ca.month()) as Box<dyn SeriesTrait>),
+            ArrowDataType::Date64(_) => self
+                .date64()
+                .map(|ca| Box::new(ca.month()) as Box<dyn SeriesTrait>),
+            _ => Err(PolarsError::InvalidOperation(
+                format!("operation not supported on dtype {:?}", self.dtype()).into(),
+            )),
+        }
     }
 
     #[cfg(feature = "temporal")]
@@ -703,6 +989,16 @@ where
     /// Extract month from underlying NaiveDateTime representation.
     /// Returns the year number in the calendar date.
     fn year(&self) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        match T::get_data_type() {
+            ArrowDataType::Date32(_) => self
+                .date32()
+                .map(|ca| Box::new(ca.year()) as Box<dyn SeriesTrait>),
+            ArrowDataType::Date64(_) => self
+                .date64()
+                .map(|ca| Box::new(ca.year()) as Box<dyn SeriesTrait>),
+            _ => Err(PolarsError::InvalidOperation(
+                format!("operation not supported on dtype {:?}", self.dtype()).into(),
+            )),
+        }
     }
 }

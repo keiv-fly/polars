@@ -498,42 +498,28 @@ pub trait SeriesTrait {
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
     /// from `other` where the mask evaluates `false`
-    fn zip_with(&self, mask: &BooleanChunked, other: &Series) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
-    }
+    fn zip_with(
+        &self,
+        mask: &BooleanChunked,
+        other: &dyn SeriesTrait,
+    ) -> Result<Box<dyn SeriesTrait>>;
 
     /// Get the sum of the Series as a new Series of length 1.
-    fn sum_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn sum_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the max of the Series as a new Series of length 1.
-    fn max_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn max_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the min of the Series as a new Series of length 1.
-    fn min_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn min_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the mean of the Series as a new Series of length 1.
-    fn mean_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the median of the Series as a new Series of length 1.
-    fn median_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn median_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the variance of the Series as a new Series of length 1.
-    fn var_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn var_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the standard deviation of the Series as a new Series of length 1.
-    fn std_as_series(&self) -> Series {
-        unimplemented!()
-    }
+    fn std_as_series(&self) -> Box<dyn SeriesTrait>;
     /// Get the quantile of the ChunkedArray as a new Series of length 1.
-    fn quantile_as_series(&self, quantile: f64) -> Result<Series> {
-        unimplemented!()
-    }
+    fn quantile_as_series(&self, quantile: f64) -> Result<Box<dyn SeriesTrait>>;
     /// Apply a rolling mean to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_mean).
     fn rolling_mean(
@@ -541,9 +527,7 @@ pub trait SeriesTrait {
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
-    }
+    ) -> Result<Box<dyn SeriesTrait>>;
     /// Apply a rolling sum to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_sum).
     fn rolling_sum(
