@@ -11,6 +11,7 @@ use arrow::{
 use num::{Num, NumCast, ToPrimitive};
 use std::ops::{BitAnd, BitOr, Not};
 use std::sync::Arc;
+use crate::series::SeriesTrait;
 
 impl<T> ChunkedArray<T>
 where
@@ -694,27 +695,27 @@ impl Not for BooleanChunked {
 }
 
 pub trait CompToSeries {
-    fn lt_series(&self, _rhs: &Series) -> BooleanChunked {
+    fn lt_series(&self, _rhs: &dyn SeriesTrait) -> BooleanChunked {
         unimplemented!()
     }
 
-    fn gt_series(&self, _rhs: &Series) -> BooleanChunked {
+    fn gt_series(&self, _rhs: &dyn SeriesTrait) -> BooleanChunked {
         unimplemented!()
     }
 
-    fn gt_eq_series(&self, _rhs: &Series) -> BooleanChunked {
+    fn gt_eq_series(&self, _rhs: &dyn SeriesTrait) -> BooleanChunked {
         unimplemented!()
     }
 
-    fn lt_eq_series(&self, _rhs: &Series) -> BooleanChunked {
+    fn lt_eq_series(&self, _rhs: &dyn SeriesTrait) -> BooleanChunked {
         unimplemented!()
     }
 
-    fn eq_series(&self, _rhs: &Series) -> BooleanChunked {
+    fn eq_series(&self, _rhs: &dyn SeriesTrait) -> BooleanChunked {
         unimplemented!()
     }
 
-    fn neq_series(&self, _rhs: &Series) -> BooleanChunked {
+    fn neq_series(&self, _rhs: &dyn SeriesTrait) -> BooleanChunked {
         unimplemented!()
     }
 }
@@ -723,28 +724,34 @@ impl<T> CompToSeries for ChunkedArray<T>
 where
     T: PolarsSingleType,
 {
-    fn lt_series(&self, rhs: &Series) -> BooleanChunked {
-        ChunkCompare::<&Series>::lt(&self.clone().into_series(), rhs)
+    fn lt_series(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
+        unimplemented!()
+        // ChunkCompare::<&dyn SeriesTrait>::lt(&self.clone().into_series(), rhs)
     }
 
-    fn gt_series(&self, rhs: &Series) -> BooleanChunked {
-        ChunkCompare::<&Series>::gt(&self.clone().into_series(), rhs)
+    fn gt_series(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
+        unimplemented!()
+        // ChunkCompare::<&dyn SeriesTrait>::gt(&self.clone().into_series(), rhs)
     }
 
-    fn gt_eq_series(&self, rhs: &Series) -> BooleanChunked {
-        ChunkCompare::<&Series>::gt_eq(&self.clone().into_series(), rhs)
+    fn gt_eq_series(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
+        unimplemented!()
+        // ChunkCompare::<&dyn SeriesTrait>::gt_eq(&self.clone().into_series(), rhs)
     }
 
-    fn lt_eq_series(&self, rhs: &Series) -> BooleanChunked {
-        ChunkCompare::<&Series>::lt_eq(&self.clone().into_series(), rhs)
+    fn lt_eq_series(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
+        unimplemented!()
+        // ChunkCompare::<&dyn SeriesTrait>::lt_eq(&self.clone().into_series(), rhs)
     }
 
-    fn eq_series(&self, rhs: &Series) -> BooleanChunked {
-        ChunkCompare::<&Series>::eq(&self.clone().into_series(), rhs)
+    fn eq_series(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
+        unimplemented!()
+        // ChunkCompare::<&dyn SeriesTrait>::eq(&self.clone().into_series(), rhs)
     }
 
-    fn neq_series(&self, rhs: &Series) -> BooleanChunked {
-        ChunkCompare::<&Series>::neq(&self.clone().into_series(), rhs)
+    fn neq_series(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
+        unimplemented!()
+        // ChunkCompare::<&dyn SeriesTrait>::neq(&self.clone().into_series(), rhs)
     }
 }
 

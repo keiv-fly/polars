@@ -211,9 +211,7 @@ pub trait SeriesTrait: Send + Sync {
     }
 
     /// Append a Series of the same type in place.
-    fn append(&mut self, other: &dyn SeriesTrait) -> Result<&mut dyn SeriesTrait> {
-        unimplemented!()
-    }
+    fn append(&mut self, other: &dyn SeriesTrait) -> Result<&mut dyn SeriesTrait>;
 
     /// Filter by boolean mask. This operation clones data.
     fn filter(&self, _filter: &BooleanChunked) -> Result<Arc<dyn SeriesTrait>> {
@@ -633,6 +631,7 @@ pub trait SeriesTrait: Send + Sync {
     fn year(&self) -> Result<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
+    fn clone(&self) -> Arc<dyn SeriesTrait>;
 }
 
 /// # Series

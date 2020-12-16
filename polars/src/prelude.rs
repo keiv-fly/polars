@@ -31,10 +31,11 @@ pub use crate::{
     },
     series::{
         arithmetic::{LhsNumOps, NumOpsDispatch},
-        NamedFrom, Series,
+        NamedFrom, Series, SeriesTrait
     },
     testing::*,
 };
+pub use std::sync::Arc;
 pub use arrow::datatypes::{ArrowPrimitiveType, Field, Schema};
 
 #[cfg(feature = "temporal")]

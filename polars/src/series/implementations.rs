@@ -8,6 +8,14 @@ use arrow::buffer::Buffer;
 use regex::internal::Input;
 use std::sync::Arc;
 
+pub(crate) struct Wrap<T>(pub T);
+
+impl<T> From<ChunkedArray<T>> for Wrap<ChunkedArray<T>> {
+    fn from(ca: ChunkedArray<T>) -> Self {
+        Wrap(ca)
+    }
+}
+
 impl<'a, T> AsRef<ChunkedArray<T>> for dyn SeriesTrait + 'a
 where
     T: 'static + PolarsDataType,
@@ -21,7 +29,7 @@ where
     }
 }
 
-impl<T> SeriesTrait for ChunkedArray<T>
+impl<T> SeriesTrait for Wrap<ChunkedArray<T>>
 where
     T: 'static + PolarsDataType + Send + Sync,
     ChunkedArray<T>: ChunkFilter<T>
@@ -1004,5 +1012,8 @@ where
                 format!("operation not supported on dtype {:?}", self.dtype()).into(),
             )),
         }
+    }
+    fn clone(&self) -> Arc<dyn SeriesTrait> {
+        Arc::new(self.clone()) as Arc<dyn SeriesTrait>
     }
 }

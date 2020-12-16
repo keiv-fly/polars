@@ -4,6 +4,7 @@ use num::{Num, NumCast, ToPrimitive};
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::ops;
+use crate::series::SeriesTrait;
 
 pub trait NumOpsDispatch: Debug {
     fn subtract(&self, rhs: &Series) -> Result<Series> {
@@ -144,8 +145,8 @@ impl std::ops::Rem for Series {
 // Same only now for referenced data types
 
 pub(crate) fn coerce_lhs_rhs<'a>(
-    lhs: &'a Series,
-    rhs: &'a Series,
+    lhs: &'a dyn SeriesTrait,
+    rhs: &'a dyn SeriesTrait,
 ) -> Result<(Cow<'a, Series>, Cow<'a, Series>)> {
     let dtype = get_supertype(lhs.dtype(), rhs.dtype())?;
     let left = if lhs.dtype() == &dtype {

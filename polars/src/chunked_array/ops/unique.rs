@@ -9,6 +9,7 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::hash::Hash;
+use crate::series::SeriesTrait;
 
 pub(crate) fn is_unique_helper(
     mut groups: Vec<(usize, Vec<usize>)>,
@@ -152,7 +153,7 @@ impl<T> ChunkUnique<T> for ChunkedArray<T>
 where
     T: PolarsIntegerType,
     T::Native: Hash + Eq,
-    ChunkedArray<T>: ChunkOps,
+    ChunkedArray<T>: ChunkOps + IntoSeries,
 {
     fn unique(&self) -> Result<Self> {
         let set = match self.null_count() {
@@ -222,7 +223,7 @@ fn dummies_helper(mut groups: Vec<usize>, len: usize, name: &str) -> UInt8Chunke
     ChunkedArray::new_from_aligned_vec(name, av)
 }
 
-fn sort_columns(columns: Vec<Series>) -> Vec<Series> {
+fn sort_columns(columns: Vec<Arc<dyn SeriesTrait>>) -> Vec<Arc<dyn SeriesTrait>> {
     columns
         .into_iter()
         .sorted_by_key(|s| s.name().to_string())

@@ -8,6 +8,7 @@ use arrow::compute;
 use num::{Bounded, Num, NumCast, ToPrimitive};
 use std::cmp::{Ordering, PartialOrd};
 use std::sync::Arc;
+use crate::series::implementations::Wrap;
 
 /// Aggregations that return Series of unit length. Those can be used in broadcasting operations.
 pub trait ChunkAggSeries {
@@ -296,37 +297,37 @@ where
         let v = self.sum();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn max_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.max();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn min_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.min();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn mean_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.mean();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn median_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.median();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn quantile_as_series(&self, quantile: f64) -> Result<Arc<dyn SeriesTrait>> {
         let v = self.quantile(quantile)?;
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Ok(Arc::new(ca) as Arc<dyn SeriesTrait>)
+        Ok(Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
     }
 }
 
@@ -335,7 +336,7 @@ macro_rules! impl_as_series {
         let v = $self.$agg();
         let mut ca: $ty = [v].iter().copied().collect();
         ca.rename($self.name());
-        Arc::new(ca)
+        Arc::new(Wrap(ca))
     }};
 }
 
@@ -383,37 +384,37 @@ impl ChunkAggSeries for BooleanChunked {
         let v = ChunkAgg::sum(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn max_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = ChunkAgg::max(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn min_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = ChunkAgg::min(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn mean_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = ChunkAgg::mean(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn median_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = ChunkAgg::median(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(ca) as Arc<dyn SeriesTrait>
+        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
     }
     fn quantile_as_series(&self, quantile: f64) -> Result<Arc<dyn SeriesTrait>> {
         let v = ChunkAgg::quantile(self, quantile)?;
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Ok(Arc::new(ca) as Arc<dyn SeriesTrait>)
+        Ok(Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
     }
 }
 
@@ -421,7 +422,7 @@ macro_rules! one_null_utf8 {
     ($self:ident) => {{
         let mut builder = Utf8ChunkedBuilder::new($self.name(), 1);
         builder.append_null();
-        Arc::new(builder.finish())
+        Arc::new(Wrap(builder.finish()))
     }};
 }
 
@@ -450,7 +451,7 @@ macro_rules! one_null_list {
     ($self:ident) => {{
         let mut builder = get_list_builder(&ArrowDataType::Null, 1, $self.name());
         builder.append_opt_series(None);
-        Arc::new(builder.finish())
+        Arc::new(Wrap(builder.finish()))
     }};
 }
 

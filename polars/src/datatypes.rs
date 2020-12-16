@@ -23,13 +23,13 @@ pub struct Utf8Type {}
 
 pub struct ListType {}
 
-pub trait PolarsDataType {
+pub trait PolarsDataType: Send + Sync {
     fn get_data_type() -> ArrowDataType;
 }
 
 impl<T> PolarsDataType for T
 where
-    T: PolarsPrimitiveType,
+    T: PolarsPrimitiveType + Sync + Send,
 {
     fn get_data_type() -> ArrowDataType {
         T::get_data_type()
@@ -52,7 +52,7 @@ impl PolarsDataType for ListType {
 pub struct ObjectType<T>(T);
 pub type ObjectChunked<T> = ChunkedArray<ObjectType<T>>;
 
-impl<T> PolarsDataType for ObjectType<T> {
+impl<T: Send + Sync> PolarsDataType for ObjectType<T> {
     fn get_data_type() -> ArrowDataType {
         // the best fit?
         ArrowDataType::Binary
@@ -89,7 +89,7 @@ pub type IntervalDayTimeChunked = ChunkedArray<IntervalDayTimeType>;
 #[cfg(feature = "dtype-interval")]
 pub type IntervalYearMonthChunked = ChunkedArray<IntervalYearMonthType>;
 
-pub trait PolarsPrimitiveType: ArrowPrimitiveType {}
+pub trait PolarsPrimitiveType: ArrowPrimitiveType + Send + Sync{}
 impl PolarsPrimitiveType for BooleanType {}
 impl PolarsPrimitiveType for UInt8Type {}
 impl PolarsPrimitiveType for UInt16Type {}
