@@ -6,6 +6,7 @@ use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
 use regex::internal::Input;
+use std::sync::Arc;
 
 impl<'a, T> AsRef<ChunkedArray<T>> for dyn SeriesTrait + 'a
 where
@@ -22,7 +23,7 @@ where
 
 impl<T> SeriesTrait for ChunkedArray<T>
 where
-    T: 'static + PolarsDataType,
+    T: 'static + PolarsDataType + Send + Sync,
     ChunkedArray<T>: ChunkFilter<T>
         + ChunkTake
         + ChunkOps
@@ -432,15 +433,15 @@ where
     }
 
     /// Take `num_elements` from the top as a zero copy view.
-    fn limit(&self, num_elements: usize) -> Result<Box<dyn SeriesTrait>> {
+    fn limit(&self, num_elements: usize) -> Result<Arc<dyn SeriesTrait>> {
         self.limit(num_elements)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Get a zero copy view of the data.
-    fn slice(&self, offset: usize, length: usize) -> Result<Box<dyn SeriesTrait>> {
+    fn slice(&self, offset: usize, length: usize) -> Result<Arc<dyn SeriesTrait>> {
         self.slice(offset, length)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Append a Series of the same type in place.
@@ -457,8 +458,8 @@ where
     }
 
     /// Filter by boolean mask. This operation clones data.
-    fn filter(&self, filter: &BooleanChunked) -> Result<Box<dyn SeriesTrait>> {
-        ChunkFilter::filter(self, filter).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+    fn filter(&self, filter: &BooleanChunked) -> Result<Arc<dyn SeriesTrait>> {
+        ChunkFilter::filter(self, filter).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -470,8 +471,8 @@ where
         &self,
         iter: &mut dyn Iterator<Item = usize>,
         capacity: Option<usize>,
-    ) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkTake::take(self, iter, capacity))
+    ) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkTake::take(self, iter, capacity))
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -483,17 +484,17 @@ where
         &self,
         iter: &mut dyn Iterator<Item = usize>,
         capacity: Option<usize>,
-    ) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkTake::take_unchecked(self, iter, capacity))
+    ) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkTake::take_unchecked(self, iter, capacity))
     }
 
     /// Take by index if ChunkedArray contains a single chunk.
     ///
     /// # Safety
     /// This doesn't check any bounds. Null validity is checked.
-    unsafe fn take_from_single_chunked(&self, idx: &UInt32Chunked) -> Result<Box<dyn SeriesTrait>> {
+    unsafe fn take_from_single_chunked(&self, idx: &UInt32Chunked) -> Result<Arc<dyn SeriesTrait>> {
         ChunkTake::take_from_single_chunked(self, idx)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -505,8 +506,8 @@ where
         &self,
         iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
-    ) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkTake::take_opt_unchecked(self, iter, capacity))
+    ) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkTake::take_opt_unchecked(self, iter, capacity))
     }
 
     /// Take by index from an iterator. This operation clones the data.
@@ -518,8 +519,8 @@ where
         &self,
         iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
-    ) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkTake::take_opt(self, iter, capacity))
+    ) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkTake::take_opt(self, iter, capacity))
     }
 
     /// Take by index. This operation is clone.
@@ -527,7 +528,7 @@ where
     /// # Safety
     ///
     /// Out of bounds access doesn't Error but will return a Null value
-    fn take(&self, indices: &dyn AsTakeIndex) -> Box<dyn SeriesTrait> {
+    fn take(&self, indices: &dyn AsTakeIndex) -> Arc<dyn SeriesTrait> {
         let mut iter = indices.as_take_iter();
         let capacity = indices.take_index_len();
         self.take_iter(&mut iter, Some(capacity))
@@ -544,26 +545,26 @@ where
     }
 
     /// Aggregate all chunks to a contiguous array of memory.
-    fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Box<dyn SeriesTrait>> {
-        ChunkOps::rechunk(self, chunk_lengths).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+    fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Arc<dyn SeriesTrait>> {
+        ChunkOps::rechunk(self, chunk_lengths).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Get the head of the Series.
-    fn head(&self, length: Option<usize>) -> Box<dyn SeriesTrait> {
-        Box::new(self.head(length))
+    fn head(&self, length: Option<usize>) -> Arc<dyn SeriesTrait> {
+        Arc::new(self.head(length))
     }
 
     /// Get the tail of the Series.
-    fn tail(&self, length: Option<usize>) -> Box<dyn SeriesTrait> {
-        Box::new(self.tail(length))
+    fn tail(&self, length: Option<usize>) -> Arc<dyn SeriesTrait> {
+        Arc::new(self.tail(length))
     }
 
     /// Drop all null values and return a new Series.
-    fn drop_nulls(&self) -> Box<dyn SeriesTrait> {
+    fn drop_nulls(&self) -> Arc<dyn SeriesTrait> {
         if self.null_count() == 0 {
-            Box::new(self.clone())
+            Arc::new(self.clone())
         } else {
-            Box::new(ChunkFilter::filter(self, &self.is_not_null()).unwrap())
+            Arc::new(ChunkFilter::filter(self, &self.is_not_null()).unwrap())
         }
     }
 
@@ -577,69 +578,69 @@ where
     /// let expanded = s.expand_at_index(2, 4);
     /// assert_eq!(Vec::from(expanded.i32().unwrap()), &[Some(8), Some(8), Some(8), Some(8)])
     /// ```
-    fn expand_at_index(&self, index: usize, length: usize) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkExpandAtIndex::expand_at_index(self, index, length))
+    fn expand_at_index(&self, index: usize, length: usize) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkExpandAtIndex::expand_at_index(self, index, length))
     }
 
-    fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Box<dyn SeriesTrait>> {
+    fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Arc<dyn SeriesTrait>> {
         use ArrowDataType::*;
         match data_type {
             Boolean => {
-                ChunkCast::cast::<BooleanType>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<BooleanType>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Utf8 => {
-                ChunkCast::cast::<Utf8Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Utf8Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             UInt8 => {
-                ChunkCast::cast::<UInt8Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<UInt8Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             UInt16 => {
-                ChunkCast::cast::<UInt16Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<UInt16Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             UInt32 => {
-                ChunkCast::cast::<UInt32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<UInt32Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             UInt64 => {
-                ChunkCast::cast::<UInt64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<UInt64Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Int8 => {
-                ChunkCast::cast::<Int8Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Int8Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Int16 => {
-                ChunkCast::cast::<Int16Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Int16Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Int32 => {
-                ChunkCast::cast::<Int32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Int32Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Int64 => {
-                ChunkCast::cast::<Int64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Int64Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Float32 => {
-                ChunkCast::cast::<Float32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Float32Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Float64 => {
-                ChunkCast::cast::<Float64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Float64Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Date32(_) => {
-                ChunkCast::cast::<Date32Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Date32Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Date64(_) => {
-                ChunkCast::cast::<Date64Type>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<Date64Type>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             Time64(TimeUnit::Nanosecond) => ChunkCast::cast::<Time64NanosecondType>(self)
-                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>),
             Duration(TimeUnit::Nanosecond) => ChunkCast::cast::<DurationNanosecondType>(self)
-                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>),
             Duration(TimeUnit::Millisecond) => ChunkCast::cast::<DurationMillisecondType>(self)
-                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>),
             #[cfg(feature = "dtype-interval")]
             Interval(IntervalUnit::DayTime) => ChunkCast::cast::<IntervalDayTimeType>(self)
-                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>),
             #[cfg(feature = "dtype-interval")]
             Interval(IntervalUnit::YearMonth) => ChunkCast::cast::<IntervalYearMonthType>(self)
-                .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>),
             List(_) => {
-                ChunkCast::cast::<ListType>(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+                ChunkCast::cast::<ListType>(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
             }
             dt => Err(PolarsError::Other(
                 format!("Casting to {:?} is not supported", dt).into(),
@@ -668,8 +669,8 @@ where
         self
     }
 
-    fn sort(&self, reverse: bool) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkSort::sort(self, reverse))
+    fn sort(&self, reverse: bool) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkSort::sort(self, reverse))
     }
 
     /// Retrieve the indexes needed for a sort.
@@ -683,8 +684,8 @@ where
     }
 
     /// Get unique values in the Series.
-    fn unique(&self) -> Result<Box<dyn SeriesTrait>> {
-        ChunkUnique::unique(self).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+    fn unique(&self) -> Result<Arc<dyn SeriesTrait>> {
+        ChunkUnique::unique(self).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Get unique values in the Series.
@@ -729,8 +730,8 @@ where
     }
 
     /// return a Series in reversed order
-    fn reverse(&self) -> Box<dyn SeriesTrait> {
-        Box::new(ChunkReverse::reverse(self))
+    fn reverse(&self) -> Arc<dyn SeriesTrait> {
+        Arc::new(ChunkReverse::reverse(self))
     }
 
     /// Rechunk and return a pointer to the start of the Series.
@@ -765,8 +766,8 @@ where
     /// }
     /// example();
     /// ```
-    fn shift(&self, periods: i32) -> Result<Box<dyn SeriesTrait>> {
-        ChunkShift::shift(self, periods).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+    fn shift(&self, periods: i32) -> Result<Arc<dyn SeriesTrait>> {
+        ChunkShift::shift(self, periods).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Replace None values with one of the following strategies:
@@ -805,8 +806,8 @@ where
     /// }
     /// example();
     /// ```
-    fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Box<dyn SeriesTrait>> {
-        ChunkFillNone::fill_none(self, strategy).map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+    fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Arc<dyn SeriesTrait>> {
+        ChunkFillNone::fill_none(self, strategy).map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
@@ -815,33 +816,33 @@ where
         &self,
         mask: &BooleanChunked,
         other: &dyn SeriesTrait,
-    ) -> Result<Box<dyn SeriesTrait>> {
+    ) -> Result<Arc<dyn SeriesTrait>> {
         ChunkZip::zip_with(self, mask, other.as_ref())
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
-    fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn sum_as_series(&self) -> Arc<dyn SeriesTrait> {
         ChunkAggSeries::sum_as_series(self)
     }
-    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn max_as_series(&self) -> Arc<dyn SeriesTrait> {
         ChunkAggSeries::max_as_series(self)
     }
-    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn min_as_series(&self) -> Arc<dyn SeriesTrait> {
         ChunkAggSeries::min_as_series(self)
     }
-    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn mean_as_series(&self) -> Arc<dyn SeriesTrait> {
         ChunkAggSeries::mean_as_series(self)
     }
-    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn median_as_series(&self) -> Arc<dyn SeriesTrait> {
         ChunkAggSeries::median_as_series(self)
     }
-    fn var_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn var_as_series(&self) -> Arc<dyn SeriesTrait> {
         VarAggSeries::var_as_series(self)
     }
-    fn std_as_series(&self) -> Box<dyn SeriesTrait> {
+    fn std_as_series(&self) -> Arc<dyn SeriesTrait> {
         VarAggSeries::std_as_series(self)
     }
-    fn quantile_as_series(&self, quantile: f64) -> Result<Box<dyn SeriesTrait>> {
+    fn quantile_as_series(&self, quantile: f64) -> Result<Arc<dyn SeriesTrait>> {
         ChunkAggSeries::quantile_as_series(self, quantile)
     }
     fn rolling_mean(
@@ -849,9 +850,9 @@ where
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Box<dyn SeriesTrait>> {
+    ) -> Result<Arc<dyn SeriesTrait>> {
         ChunkWindow::rolling_mean(self, window_size, weight, ignore_null)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
     /// Apply a rolling sum to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_sum).
@@ -860,9 +861,9 @@ where
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Box<dyn SeriesTrait>> {
+    ) -> Result<Arc<dyn SeriesTrait>> {
         ChunkWindow::rolling_sum(self, window_size, weight, ignore_null)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
     /// Apply a rolling min to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_min).
@@ -871,9 +872,9 @@ where
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Box<dyn SeriesTrait>> {
+    ) -> Result<Arc<dyn SeriesTrait>> {
         ChunkWindow::rolling_min(self, window_size, weight, ignore_null)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
     /// Apply a rolling max to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_max).
@@ -882,9 +883,9 @@ where
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Box<dyn SeriesTrait>> {
+    ) -> Result<Arc<dyn SeriesTrait>> {
         ChunkWindow::rolling_max(self, window_size, weight, ignore_null)
-            .map(|ca| Box::new(ca) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
     // fn fmt_list(&self) -> String {
@@ -895,27 +896,27 @@ where
     #[doc(cfg(feature = "temporal"))]
     /// Extract hour from underlying NaiveDateTime representation.
     /// Returns the hour number from 0 to 23.
-    fn hour(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn hour(&self) -> Result<Arc<dyn SeriesTrait>> {
         self.date64()
-            .map(|ca| Box::new(ca.hour()) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca.hour()) as Arc<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
     #[doc(cfg(feature = "temporal"))]
     /// Extract minute from underlying NaiveDateTime representation.
     /// Returns the minute number from 0 to 59.
-    fn minute(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn minute(&self) -> Result<Arc<dyn SeriesTrait>> {
         self.date64()
-            .map(|ca| Box::new(ca.minute()) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca.minute()) as Arc<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
     #[doc(cfg(feature = "temporal"))]
     /// Extract second from underlying NaiveDateTime representation.
     /// Returns the second number from 0 to 59.
-    fn second(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn second(&self) -> Result<Arc<dyn SeriesTrait>> {
         self.date64()
-            .map(|ca| Box::new(ca.second()) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca.second()) as Arc<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
@@ -923,9 +924,9 @@ where
     /// Extract second from underlying NaiveDateTime representation.
     /// Returns the number of nanoseconds since the whole non-leap second.
     /// The range from 1,000,000,000 to 1,999,999,999 represents the leap second.
-    fn nanosecond(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn nanosecond(&self) -> Result<Arc<dyn SeriesTrait>> {
         self.date64()
-            .map(|ca| Box::new(ca.nanosecond()) as Box<dyn SeriesTrait>)
+            .map(|ca| Arc::new(ca.nanosecond()) as Arc<dyn SeriesTrait>)
     }
 
     #[cfg(feature = "temporal")]
@@ -934,14 +935,14 @@ where
     /// Returns the day of month starting from 1.
     ///
     /// The return value ranges from 1 to 31. (The last day of month differs by months.)
-    fn day(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn day(&self) -> Result<Arc<dyn SeriesTrait>> {
         match T::get_data_type() {
             ArrowDataType::Date32(_) => self
                 .date32()
-                .map(|ca| Box::new(ca.day()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.day()) as Arc<dyn SeriesTrait>),
             ArrowDataType::Date64(_) => self
                 .date64()
-                .map(|ca| Box::new(ca.day()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.day()) as Arc<dyn SeriesTrait>),
             _ => Err(PolarsError::InvalidOperation(
                 format!("operation not supported on dtype {:?}", self.dtype()).into(),
             )),
@@ -953,14 +954,14 @@ where
     /// Returns the day of year starting from 1.
     ///
     /// The return value ranges from 1 to 366. (The last day of year differs by years.)
-    fn ordinal_day(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn ordinal_day(&self) -> Result<Arc<dyn SeriesTrait>> {
         match T::get_data_type() {
             ArrowDataType::Date32(_) => self
                 .date32()
-                .map(|ca| Box::new(ca.ordinal()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.ordinal()) as Arc<dyn SeriesTrait>),
             ArrowDataType::Date64(_) => self
                 .date64()
-                .map(|ca| Box::new(ca.ordinal()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.ordinal()) as Arc<dyn SeriesTrait>),
             _ => Err(PolarsError::InvalidOperation(
                 format!("operation not supported on dtype {:?}", self.dtype()).into(),
             )),
@@ -973,14 +974,14 @@ where
     /// Returns the month number starting from 1.
     ///
     /// The return value ranges from 1 to 12.
-    fn month(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn month(&self) -> Result<Arc<dyn SeriesTrait>> {
         match T::get_data_type() {
             ArrowDataType::Date32(_) => self
                 .date32()
-                .map(|ca| Box::new(ca.month()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.month()) as Arc<dyn SeriesTrait>),
             ArrowDataType::Date64(_) => self
                 .date64()
-                .map(|ca| Box::new(ca.month()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.month()) as Arc<dyn SeriesTrait>),
             _ => Err(PolarsError::InvalidOperation(
                 format!("operation not supported on dtype {:?}", self.dtype()).into(),
             )),
@@ -991,14 +992,14 @@ where
     #[doc(cfg(feature = "temporal"))]
     /// Extract month from underlying NaiveDateTime representation.
     /// Returns the year number in the calendar date.
-    fn year(&self) -> Result<Box<dyn SeriesTrait>> {
+    fn year(&self) -> Result<Arc<dyn SeriesTrait>> {
         match T::get_data_type() {
             ArrowDataType::Date32(_) => self
                 .date32()
-                .map(|ca| Box::new(ca.year()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.year()) as Arc<dyn SeriesTrait>),
             ArrowDataType::Date64(_) => self
                 .date64()
-                .map(|ca| Box::new(ca.year()) as Box<dyn SeriesTrait>),
+                .map(|ca| Arc::new(ca.year()) as Arc<dyn SeriesTrait>),
             _ => Err(PolarsError::InvalidOperation(
                 format!("operation not supported on dtype {:?}", self.dtype()).into(),
             )),

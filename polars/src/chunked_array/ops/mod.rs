@@ -856,7 +856,6 @@ pub trait ChunkZip<T> {
     fn zip_with_series(&self, mask: &BooleanChunked, other: &Series) -> Result<ChunkedArray<T>>;
 }
 
-
 /// Apply kernels on the arrow array chunks in a ChunkedArray.
 pub trait ChunkApplyKernel<A> {
     /// Apply kernel and return result as a new ChunkedArray.
