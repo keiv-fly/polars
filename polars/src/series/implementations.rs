@@ -1,4 +1,5 @@
 use super::SeriesTrait;
+use crate::chunked_array::ops::aggregate::{ChunkAggSeries, VarAggSeries};
 use crate::datatypes::ArrowDataType;
 use crate::prelude::*;
 use crate::prelude::*;
@@ -34,7 +35,9 @@ where
         + ChunkFillNone
         + ChunkZip<T>
         + ChunkCast
-        + ChunkWindow,
+        + ChunkWindow
+        + ChunkAggSeries
+        + VarAggSeries,
 {
     fn array_data(&self) -> Vec<ArrayDataRef> {
         self.array_data()
@@ -818,28 +821,28 @@ where
     }
 
     fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        ChunkAggSeries::sum_as_series(self)
     }
     fn max_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        ChunkAggSeries::max_as_series(self)
     }
     fn min_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        ChunkAggSeries::min_as_series(self)
     }
     fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        ChunkAggSeries::mean_as_series(self)
     }
     fn median_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        ChunkAggSeries::median_as_series(self)
     }
     fn var_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        VarAggSeries::var_as_series(self)
     }
     fn std_as_series(&self) -> Box<dyn SeriesTrait> {
-        unimplemented!()
+        VarAggSeries::std_as_series(self)
     }
     fn quantile_as_series(&self, quantile: f64) -> Result<Box<dyn SeriesTrait>> {
-        unimplemented!()
+        ChunkAggSeries::quantile_as_series(self, quantile)
     }
     fn rolling_mean(
         &self,

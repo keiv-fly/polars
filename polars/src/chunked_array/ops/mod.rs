@@ -856,44 +856,6 @@ pub trait ChunkZip<T> {
     fn zip_with_series(&self, mask: &BooleanChunked, other: &Series) -> Result<ChunkedArray<T>>;
 }
 
-/// Aggregations that return Series of unit length. Those can be used in broadcasting operations.
-pub trait ChunkAggSeries {
-    /// Get the sum of the ChunkedArray as a new Series of length 1.
-    fn sum_as_series(&self) -> Series {
-        unimplemented!()
-    }
-    /// Get the max of the ChunkedArray as a new Series of length 1.
-    fn max_as_series(&self) -> Series {
-        unimplemented!()
-    }
-    /// Get the min of the ChunkedArray as a new Series of length 1.
-    fn min_as_series(&self) -> Series {
-        unimplemented!()
-    }
-    /// Get the mean of the ChunkedArray as a new Series of length 1.
-    fn mean_as_series(&self) -> Series {
-        unimplemented!()
-    }
-    /// Get the median of the ChunkedArray as a new Series of length 1.
-    fn median_as_series(&self) -> Series {
-        unimplemented!()
-    }
-    /// Get the quantile of the ChunkedArray as a new Series of length 1.
-    fn quantile_as_series(&self, _quantile: f64) -> Result<Series> {
-        unimplemented!()
-    }
-}
-
-pub trait VarAggSeries {
-    /// Get the variance of the ChunkedArray as a new Series of length 1.
-    fn var_as_series(&self) -> Series {
-        unimplemented!()
-    }
-    /// Get the standard deviation of the ChunkedArray as a new Series of length 1.
-    fn std_as_series(&self) -> Series {
-        unimplemented!()
-    }
-}
 
 /// Apply kernels on the arrow array chunks in a ChunkedArray.
 pub trait ChunkApplyKernel<A> {

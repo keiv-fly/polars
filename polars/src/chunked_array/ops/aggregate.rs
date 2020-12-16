@@ -2,10 +2,50 @@
 use crate::chunked_array::builder::get_list_builder;
 use crate::chunked_array::ChunkedArray;
 use crate::datatypes::BooleanChunked;
+use crate::series::SeriesTrait;
 use crate::{datatypes::PolarsNumericType, prelude::*};
 use arrow::compute;
-use num::{Num, NumCast, ToPrimitive};
+use num::{Bounded, Num, NumCast, ToPrimitive};
 use std::cmp::{Ordering, PartialOrd};
+
+/// Aggregations that return Series of unit length. Those can be used in broadcasting operations.
+pub trait ChunkAggSeries {
+    /// Get the sum of the ChunkedArray as a new Series of length 1.
+    fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+    /// Get the max of the ChunkedArray as a new Series of length 1.
+    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+    /// Get the min of the ChunkedArray as a new Series of length 1.
+    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+    /// Get the mean of the ChunkedArray as a new Series of length 1.
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+    /// Get the median of the ChunkedArray as a new Series of length 1.
+    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+    /// Get the quantile of the ChunkedArray as a new Series of length 1.
+    fn quantile_as_series(&self, _quantile: f64) -> Result<Box<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+}
+
+pub trait VarAggSeries {
+    /// Get the variance of the ChunkedArray as a new Series of length 1.
+    fn var_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+    /// Get the standard deviation of the ChunkedArray as a new Series of length 1.
+    fn std_as_series(&self) -> Box<dyn SeriesTrait> {
+        unimplemented!()
+    }
+}
 
 macro_rules! cmp_float_with_nans {
     ($a:expr, $b:expr, $precision:ty) => {{
@@ -39,8 +79,7 @@ macro_rules! agg_float_with_nans {
 macro_rules! impl_quantile {
     ($self:expr, $quantile:expr) => {{
         let null_count = $self.null_count();
-        let opt = $self
-            .sort(false)
+        let opt = ChunkSort::sort($self, false)
             .slice(
                 ((($self.len() - null_count) as f64) * $quantile + null_count as f64) as usize,
                 1,
@@ -234,46 +273,59 @@ impl ChunkAgg<u32> for BooleanChunked {
     }
 }
 
+// Needs the same trait bounds as the implementation of ChunkedArray<T> of dyn Series
 impl<T> ChunkAggSeries for ChunkedArray<T>
 where
     T: PolarsNumericType,
-    T::Native: PartialOrd + Num + NumCast,
+    T::Native: PartialOrd + Num + NumCast + Bounded,
+    ChunkedArray<T>: ChunkFilter<T>
+        + ChunkTake
+        + ChunkOps
+        + ChunkExpandAtIndex<T>
+        + ToDummies<T>
+        + ChunkUnique<T>
+        + ChunkSort<T>
+        + ChunkReverse<T>
+        + ChunkShift<T>
+        + ChunkFillNone
+        + ChunkZip<T>
+        + VarAggSeries,
 {
-    fn sum_as_series(&self) -> Series {
+fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = self.sum();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn max_as_series(&self) -> Series {
+    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = self.max();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn min_as_series(&self) -> Series {
+    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = self.min();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn mean_as_series(&self) -> Series {
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = self.mean();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn median_as_series(&self) -> Series {
+    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = self.median();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn quantile_as_series(&self, quantile: f64) -> Result<Series> {
+    fn quantile_as_series(&self, quantile: f64) -> Result<Box<dyn SeriesTrait>> {
         let v = self.quantile(quantile)?;
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Ok(ca.into())
+        Ok(Box::new(ca) as Box<dyn SeriesTrait>)
     }
 }
 
@@ -282,7 +334,7 @@ macro_rules! impl_as_series {
         let v = $self.$agg();
         let mut ca: $ty = [v].iter().copied().collect();
         ca.rename($self.name());
-        ca.into()
+        Box::new(ca)
     }};
 }
 
@@ -290,32 +342,33 @@ impl<T> VarAggSeries for ChunkedArray<T>
 where
     T: PolarsIntegerType,
     T::Native: PartialOrd + Num + NumCast,
+
 {
-    fn var_as_series(&self) -> Series {
+    fn var_as_series(&self) -> Box<dyn SeriesTrait> {
         impl_as_series!(self, var, Float64Chunked)
     }
 
-    fn std_as_series(&self) -> Series {
+    fn std_as_series(&self) -> Box<dyn SeriesTrait> {
         impl_as_series!(self, std, Float64Chunked)
     }
 }
 
 impl VarAggSeries for Float32Chunked {
-    fn var_as_series(&self) -> Series {
+    fn var_as_series(&self) -> Box<dyn SeriesTrait> {
         impl_as_series!(self, var, Float32Chunked)
     }
 
-    fn std_as_series(&self) -> Series {
+    fn std_as_series(&self) -> Box<dyn SeriesTrait> {
         impl_as_series!(self, std, Float32Chunked)
     }
 }
 
 impl VarAggSeries for Float64Chunked {
-    fn var_as_series(&self) -> Series {
+    fn var_as_series(&self) -> Box<dyn SeriesTrait> {
         impl_as_series!(self, var, Float64Chunked)
     }
 
-    fn std_as_series(&self) -> Series {
+    fn std_as_series(&self) -> Box<dyn SeriesTrait> {
         impl_as_series!(self, std, Float64Chunked)
     }
 }
@@ -326,41 +379,41 @@ impl<T> VarAggSeries for ObjectChunked<T> {}
 impl VarAggSeries for Utf8Chunked {}
 
 impl ChunkAggSeries for BooleanChunked {
-    fn sum_as_series(&self) -> Series {
+    fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = ChunkAgg::sum(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn max_as_series(&self) -> Series {
+    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = ChunkAgg::max(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn min_as_series(&self) -> Series {
+    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = ChunkAgg::min(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn mean_as_series(&self) -> Series {
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = ChunkAgg::mean(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn median_as_series(&self) -> Series {
+    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
         let v = ChunkAgg::median(self);
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        ca.into()
+        Box::new(ca) as Box<dyn SeriesTrait>
     }
-    fn quantile_as_series(&self, quantile: f64) -> Result<Series> {
+    fn quantile_as_series(&self, quantile: f64) -> Result<Box<dyn SeriesTrait>> {
         let v = ChunkAgg::quantile(self, quantile)?;
         let mut ca: UInt32Chunked = [v].iter().copied().collect();
         ca.rename(self.name());
-        Ok(ca.into())
+        Ok(Box::new(ca) as Box<dyn SeriesTrait>)
     }
 }
 
@@ -368,27 +421,27 @@ macro_rules! one_null_utf8 {
     ($self:ident) => {{
         let mut builder = Utf8ChunkedBuilder::new($self.name(), 1);
         builder.append_null();
-        builder.finish().into_series()
+        Box::new(builder.finish())
     }};
 }
 
 impl ChunkAggSeries for Utf8Chunked {
-    fn sum_as_series(&self) -> Series {
+    fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_utf8!(self)
     }
-    fn max_as_series(&self) -> Series {
+    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_utf8!(self)
     }
-    fn min_as_series(&self) -> Series {
+    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_utf8!(self)
     }
-    fn mean_as_series(&self) -> Series {
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_utf8!(self)
     }
-    fn median_as_series(&self) -> Series {
+    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_utf8!(self)
     }
-    fn quantile_as_series(&self, _quantile: f64) -> Result<Series> {
+    fn quantile_as_series(&self, _quantile: f64) -> Result<Box<dyn SeriesTrait>> {
         Ok(one_null_utf8!(self))
     }
 }
@@ -397,27 +450,27 @@ macro_rules! one_null_list {
     ($self:ident) => {{
         let mut builder = get_list_builder(&ArrowDataType::Null, 1, $self.name());
         builder.append_opt_series(None);
-        builder.finish().into_series()
+        Box::new(builder.finish())
     }};
 }
 
 impl ChunkAggSeries for ListChunked {
-    fn sum_as_series(&self) -> Series {
+    fn sum_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_list!(self)
     }
-    fn max_as_series(&self) -> Series {
+    fn max_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_list!(self)
     }
-    fn min_as_series(&self) -> Series {
+    fn min_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_list!(self)
     }
-    fn mean_as_series(&self) -> Series {
+    fn mean_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_list!(self)
     }
-    fn median_as_series(&self) -> Series {
+    fn median_as_series(&self) -> Box<dyn SeriesTrait> {
         one_null_list!(self)
     }
-    fn quantile_as_series(&self, _quantile: f64) -> Result<Series> {
+    fn quantile_as_series(&self, _quantile: f64) -> Result<Box<dyn SeriesTrait>> {
         Ok(one_null_list!(self))
     }
 }
