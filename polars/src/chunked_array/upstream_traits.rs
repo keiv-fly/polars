@@ -207,6 +207,23 @@ impl FromIterator<Arc<dyn SeriesTrait>> for ListChunked {
     }
 }
 
+impl FromIterator<Series> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Series>>(iter: I) -> Self {
+        let mut it = iter.into_iter();
+        let capacity = get_iter_capacity(&it);
+
+        // first take one to get the dtype. We panic if we have an empty iterator
+        let v = it.next().unwrap();
+        let mut builder = get_list_builder(v.dtype(), capacity, "collected");
+
+        builder.append_opt_series(Some(v.as_ref()));
+        for s in it {
+            builder.append_opt_series(Some(s.as_ref()));
+        }
+        builder.finish()
+    }
+}
+
 impl<'a> FromIterator<&'a dyn SeriesTrait> for ListChunked {
     fn from_iter<I: IntoIterator<Item = &'a dyn SeriesTrait>>(iter: I) -> Self {
         let mut it = iter.into_iter();
@@ -226,12 +243,12 @@ impl<'a> FromIterator<&'a dyn SeriesTrait> for ListChunked {
 }
 
 macro_rules! impl_from_iter_opt_series {
-    ($iter:ident) => {{
+    ($iter:expr) => {{
         // we don't know the type of the series until we get Some(Series) from the iterator.
         // until that happens we count the number of None's so that we can first fill the None's until
         // we know the type
 
-        let mut it = $iter.into_iter();
+        let mut it = $iter;
 
         let v;
         let mut cnt = 0;
@@ -278,13 +295,24 @@ macro_rules! impl_from_iter_opt_series {
 
 impl FromIterator<Option<Arc<dyn SeriesTrait>>> for ListChunked {
     fn from_iter<I: IntoIterator<Item = Option<Arc<dyn SeriesTrait>>>>(iter: I) -> Self {
-        impl_from_iter_opt_series!(iter)
+        impl_from_iter_opt_series!(iter.into_iter())
     }
 }
 
 impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for ListChunked {
     fn from_iter<I: IntoIterator<Item = Option<&'a dyn SeriesTrait>>>(iter: I) -> Self {
-        impl_from_iter_opt_series!(iter)
+        impl_from_iter_opt_series!(iter.into_iter())
+    }
+}
+impl FromIterator<Option<Series>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Option<Series>>>(iter: I) -> Self {
+        impl_from_iter_opt_series!(iter.into_iter().map(|opt_s| opt_s.map(|s| s.as_ref())))
+    }
+}
+
+impl<'a> FromIterator<Option<&'a Series>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Option<&'a Series>>>(iter: I) -> Self {
+        impl_from_iter_opt_series!(iter.into_iter().map(|s| opt_s.map(|s| s.as_ref())))
     }
 }
 

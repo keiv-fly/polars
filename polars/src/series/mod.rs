@@ -24,44 +24,40 @@ pub(crate) mod private {
     use crate::frame::group_by::PivotAgg;
 
     pub trait PrivateSeries {
-        fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+        fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
             unimplemented!()
         }
-        fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+        fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
             unimplemented!()
         }
         fn agg_n_unique(&self, groups: &[(usize, Vec<usize>)]) -> Option<UInt32Chunked> {
             unimplemented!()
         }
-        fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_quantile(
-            &self,
-            groups: &[(usize, Vec<usize>)],
-            _quantile: f64,
-        ) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
         fn pivot<'a>(
             &self,
             pivot_series: &'a (dyn SeriesTrait + 'a),
-            keys: Vec<Arc<dyn SeriesTrait>>,
+            keys: Vec<Series>,
             groups: &[(usize, Vec<usize>)],
             agg_type: PivotAgg,
         ) -> Result<DataFrame> {
@@ -71,7 +67,7 @@ pub(crate) mod private {
         fn pivot_count<'a>(
             &self,
             pivot_series: &'a (dyn SeriesTrait + 'a),
-            keys: Vec<Arc<dyn SeriesTrait>>,
+            keys: Vec<Series>,
             groups: &[(usize, Vec<usize>)],
         ) -> Result<DataFrame> {
             unimplemented!()
@@ -90,23 +86,23 @@ pub(crate) mod private {
             &self,
             right_column: &dyn SeriesTrait,
             opt_join_tuples: &[(Option<usize>, Option<usize>)],
-        ) -> Arc<dyn SeriesTrait> {
+        ) -> Series {
             unimplemented!()
         }
 
-        fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+        fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
             unimplemented!()
         }
-        fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+        fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
             unimplemented!()
         }
-        fn multiply(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+        fn multiply(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
             unimplemented!()
         }
-        fn divide(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+        fn divide(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
             unimplemented!()
         }
-        fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+        fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
             unimplemented!()
         }
         fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
@@ -131,7 +127,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Rename series.
-    fn rename(&self, _name: &str) -> Arc<dyn SeriesTrait> {
+    fn rename(&self, _name: &str) -> Series {
         unimplemented!()
     }
 
@@ -294,27 +290,27 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         ))
     }
 
-    fn append_array(&self, _other: ArrayRef) -> Result<Arc<dyn SeriesTrait>> {
+    fn append_array(&self, _other: ArrayRef) -> Result<Series> {
         unimplemented!()
     }
 
     /// Take `num_elements` from the top as a zero copy view.
-    fn limit(&self, _num_elements: usize) -> Result<Arc<dyn SeriesTrait>> {
+    fn limit(&self, _num_elements: usize) -> Result<Series> {
         unimplemented!()
     }
 
     /// Get a zero copy view of the data.
-    fn slice(&self, offset: usize, length: usize) -> Result<Arc<dyn SeriesTrait>> {
+    fn slice(&self, offset: usize, length: usize) -> Result<Series> {
         unimplemented!()
     }
 
     /// Append a Series of the same type in place.
-    fn append(&self, other: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+    fn append(&self, other: &dyn SeriesTrait) -> Result<Series> {
         unimplemented!()
     }
 
     /// Filter by boolean mask. This operation clones data.
-    fn filter(&self, _filter: &BooleanChunked) -> Result<Arc<dyn SeriesTrait>> {
+    fn filter(&self, _filter: &BooleanChunked) -> Result<Series> {
         unimplemented!()
     }
 
@@ -327,7 +323,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         &self,
         _iter: &mut dyn Iterator<Item = usize>,
         _capacity: Option<usize>,
-    ) -> Arc<dyn SeriesTrait> {
+    ) -> Series {
         unimplemented!()
     }
 
@@ -340,7 +336,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         &self,
         iter: &mut dyn Iterator<Item = usize>,
         capacity: Option<usize>,
-    ) -> Arc<dyn SeriesTrait> {
+    ) -> Series {
         unimplemented!()
     }
 
@@ -348,7 +344,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     ///
     /// # Safety
     /// This doesn't check any bounds. Null validity is checked.
-    unsafe fn take_from_single_chunked(&self, idx: &UInt32Chunked) -> Result<Arc<dyn SeriesTrait>> {
+    unsafe fn take_from_single_chunked(&self, idx: &UInt32Chunked) -> Result<Series> {
         unimplemented!()
     }
 
@@ -361,7 +357,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         &self,
         iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
-    ) -> Arc<dyn SeriesTrait> {
+    ) -> Series {
         unimplemented!()
     }
 
@@ -374,7 +370,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         &self,
         iter: &mut dyn Iterator<Item = Option<usize>>,
         capacity: Option<usize>,
-    ) -> Arc<dyn SeriesTrait> {
+    ) -> Series {
         unimplemented!()
     }
 
@@ -383,7 +379,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// # Safety
     ///
     /// Out of bounds access doesn't Error but will return a Null value
-    fn take(&self, indices: &dyn AsTakeIndex) -> Arc<dyn SeriesTrait> {
+    fn take(&self, indices: &dyn AsTakeIndex) -> Series {
         unimplemented!()
     }
 
@@ -398,22 +394,22 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Aggregate all chunks to a contiguous array of memory.
-    fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Arc<dyn SeriesTrait>> {
+    fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Series> {
         unimplemented!()
     }
 
     /// Get the head of the Series.
-    fn head(&self, length: Option<usize>) -> Arc<dyn SeriesTrait> {
+    fn head(&self, length: Option<usize>) -> Series {
         unimplemented!()
     }
 
     /// Get the tail of the Series.
-    fn tail(&self, length: Option<usize>) -> Arc<dyn SeriesTrait> {
+    fn tail(&self, length: Option<usize>) -> Series {
         unimplemented!()
     }
 
     /// Drop all null values and return a new Series.
-    fn drop_nulls(&self) -> Arc<dyn SeriesTrait> {
+    fn drop_nulls(&self) -> Series {
         unimplemented!()
     }
 
@@ -427,11 +423,11 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// let expanded = s.expand_at_index(2, 4);
     /// assert_eq!(Vec::from(expanded.i32().unwrap()), &[Some(8), Some(8), Some(8), Some(8)])
     /// ```
-    fn expand_at_index(&self, index: usize, length: usize) -> Arc<dyn SeriesTrait> {
+    fn expand_at_index(&self, index: usize, length: usize) -> Series {
         unimplemented!()
     }
 
-    fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Arc<dyn SeriesTrait>> {
+    fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Series> {
         unimplemented!()
     }
 
@@ -455,7 +451,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         unimplemented!()
     }
 
-    fn sort(&self, reverse: bool) -> Arc<dyn SeriesTrait> {
+    fn sort(&self, reverse: bool) -> Series {
         unimplemented!()
     }
 
@@ -470,7 +466,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Get unique values in the Series.
-    fn unique(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn unique(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -515,7 +511,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// return a Series in reversed order
-    fn reverse(&self) -> Arc<dyn SeriesTrait> {
+    fn reverse(&self) -> Series {
         unimplemented!()
     }
 
@@ -551,7 +547,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// }
     /// example();
     /// ```
-    fn shift(&self, periods: i32) -> Result<Arc<dyn SeriesTrait>> {
+    fn shift(&self, periods: i32) -> Result<Series> {
         unimplemented!()
     }
 
@@ -591,50 +587,46 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// }
     /// example();
     /// ```
-    fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Arc<dyn SeriesTrait>> {
+    fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Series> {
         unimplemented!()
     }
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
     /// from `other` where the mask evaluates `false`
-    fn zip_with(
-        &self,
-        mask: &BooleanChunked,
-        other: &dyn SeriesTrait,
-    ) -> Result<Arc<dyn SeriesTrait>> {
+    fn zip_with(&self, mask: &BooleanChunked, other: &dyn SeriesTrait) -> Result<Series> {
         unimplemented!()
     }
 
     /// Get the sum of the Series as a new Series of length 1.
-    fn sum_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn sum_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the max of the Series as a new Series of length 1.
-    fn max_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn max_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the min of the Series as a new Series of length 1.
-    fn min_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn min_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the mean of the Series as a new Series of length 1.
-    fn mean_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn mean_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the median of the Series as a new Series of length 1.
-    fn median_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn median_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the variance of the Series as a new Series of length 1.
-    fn var_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn var_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the standard deviation of the Series as a new Series of length 1.
-    fn std_as_series(&self) -> Arc<dyn SeriesTrait> {
+    fn std_as_series(&self) -> Series {
         unimplemented!()
     }
     /// Get the quantile of the ChunkedArray as a new Series of length 1.
-    fn quantile_as_series(&self, quantile: f64) -> Result<Arc<dyn SeriesTrait>> {
+    fn quantile_as_series(&self, quantile: f64) -> Result<Series> {
         unimplemented!()
     }
     /// Apply a rolling mean to a Series. See:
@@ -644,7 +636,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Arc<dyn SeriesTrait>> {
+    ) -> Result<Series> {
         unimplemented!()
     }
     /// Apply a rolling sum to a Series. See:
@@ -654,7 +646,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Arc<dyn SeriesTrait>> {
+    ) -> Result<Series> {
         unimplemented!()
     }
     /// Apply a rolling min to a Series. See:
@@ -664,7 +656,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Arc<dyn SeriesTrait>> {
+    ) -> Result<Series> {
         unimplemented!()
     }
     /// Apply a rolling max to a Series. See:
@@ -674,7 +666,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         window_size: usize,
         weight: Option<&[f64]>,
         ignore_null: bool,
-    ) -> Result<Arc<dyn SeriesTrait>> {
+    ) -> Result<Series> {
         unimplemented!()
     }
 
@@ -686,7 +678,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     #[doc(cfg(feature = "temporal"))]
     /// Extract hour from underlying NaiveDateTime representation.
     /// Returns the hour number from 0 to 23.
-    fn hour(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn hour(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -694,7 +686,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     #[doc(cfg(feature = "temporal"))]
     /// Extract minute from underlying NaiveDateTime representation.
     /// Returns the minute number from 0 to 59.
-    fn minute(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn minute(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -702,7 +694,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     #[doc(cfg(feature = "temporal"))]
     /// Extract second from underlying NaiveDateTime representation.
     /// Returns the second number from 0 to 59.
-    fn second(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn second(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -711,7 +703,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// Extract second from underlying NaiveDateTime representation.
     /// Returns the number of nanoseconds since the whole non-leap second.
     /// The range from 1,000,000,000 to 1,999,999,999 represents the leap second.
-    fn nanosecond(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn nanosecond(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -721,7 +713,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// Returns the day of month starting from 1.
     ///
     /// The return value ranges from 1 to 31. (The last day of month differs by months.)
-    fn day(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn day(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -730,7 +722,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// Returns the day of year starting from 1.
     ///
     /// The return value ranges from 1 to 366. (The last day of year differs by years.)
-    fn ordinal_day(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn ordinal_day(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -740,7 +732,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// Returns the month number starting from 1.
     ///
     /// The return value ranges from 1 to 12.
-    fn month(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn month(&self) -> Result<Series> {
         unimplemented!()
     }
 
@@ -748,10 +740,10 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     #[doc(cfg(feature = "temporal"))]
     /// Extract month from underlying NaiveDateTime representation.
     /// Returns the year number in the calendar date.
-    fn year(&self) -> Result<Arc<dyn SeriesTrait>> {
+    fn year(&self) -> Result<Series> {
         unimplemented!()
     }
-    fn clone(&self) -> Arc<dyn SeriesTrait> {
+    fn clone(&self) -> Series {
         unimplemented!()
     }
 }
@@ -875,11 +867,11 @@ impl Deref for Series {
     }
 }
 
-// impl AsRef<dyn SeriesTrait> for Series {
-//     fn as_ref(&self) -> &dyn SeriesTrait {
-//         &**self.0
-//     }
-// }
+impl<'a> AsRef<(dyn SeriesTrait + 'a)> for Series {
+    fn as_ref(&self) -> &(dyn SeriesTrait + 'a) {
+        &*self.0
+    }
+}
 
 pub trait NamedFrom<T, Phantom: ?Sized> {
     /// Initialize by name and values.

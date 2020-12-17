@@ -356,7 +356,7 @@ impl DataFrame {
 #[derive(Debug, Clone)]
 pub struct GroupBy<'df, 'selection_str> {
     df: &'df DataFrame,
-    selected_keys: Vec<Arc<dyn SeriesTrait>>,
+    selected_keys: Vec<Series>,
     // [first idx, [other idx]]
     pub(crate) groups: Vec<(usize, Vec<usize>)>,
     // columns selected for aggregation
@@ -364,16 +364,16 @@ pub struct GroupBy<'df, 'selection_str> {
 }
 
 pub(crate) trait NumericAggSync {
-    fn agg_mean(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_mean(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         None
     }
-    fn agg_min(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_min(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         None
     }
-    fn agg_max(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_max(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         None
     }
-    fn agg_sum(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_sum(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         None
     }
 }
@@ -389,7 +389,7 @@ where
     T::Native: std::ops::Add<Output = T::Native> + Num + NumCast,
     ChunkedArray<T>: IntoSeries,
 {
-    fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         let ca: Float64Chunked = groups
             .par_iter()
             .map(|(_first, idx)| {
@@ -411,7 +411,7 @@ where
         Some(ca.into_series())
     }
 
-    fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         Some(
             groups
                 .par_iter()
@@ -444,7 +444,7 @@ where
         )
     }
 
-    fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         Some(
             groups
                 .par_iter()
@@ -477,7 +477,7 @@ where
         )
     }
 
-    fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         Some(
             groups
                 .par_iter()
@@ -501,7 +501,7 @@ where
 }
 
 pub(crate) trait AggFirst {
-    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
+    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Series;
 }
 
 macro_rules! impl_agg_first {
@@ -519,31 +519,31 @@ where
     T: PolarsPrimitiveType + Send,
     ChunkedArray<T>: IntoSeries,
 {
-    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
         impl_agg_first!(self, groups, ChunkedArray<T>)
     }
 }
 
 impl AggFirst for Utf8Chunked {
-    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
         impl_agg_first!(self, groups, Utf8Chunked)
     }
 }
 
 impl AggFirst for ListChunked {
-    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
         impl_agg_first!(self, groups, ListChunked)
     }
 }
 
 impl<T> AggFirst for ObjectChunked<T> {
-    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Series {
         todo!()
     }
 }
 
 pub(crate) trait AggLast {
-    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
+    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Series;
 }
 
 macro_rules! impl_agg_last {
@@ -561,25 +561,25 @@ where
     T: PolarsPrimitiveType + Send,
     ChunkedArray<T>: IntoSeries,
 {
-    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
         impl_agg_last!(self, groups, ChunkedArray<T>)
     }
 }
 
 impl AggLast for Utf8Chunked {
-    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
         impl_agg_last!(self, groups, Utf8Chunked)
     }
 }
 
 impl AggLast for ListChunked {
-    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
         impl_agg_last!(self, groups, ListChunked)
     }
 }
 
 impl<T> AggLast for ObjectChunked<T> {
-    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+    fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Series {
         todo!()
     }
 }
@@ -646,7 +646,7 @@ impl AggNUnique for Utf8Chunked {
 }
 
 pub(crate) trait AggList {
-    fn agg_list(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_list(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         None
     }
 }
@@ -655,7 +655,7 @@ where
     T: PolarsDataType,
     ChunkedArray<T>: IntoSeries,
 {
-    fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         macro_rules! impl_gb {
             ($type:ty, $agg_col:expr) => {{
                 let values_builder = PrimitiveBuilder::<$type>::new(groups.len());
@@ -696,15 +696,11 @@ where
 }
 
 pub(crate) trait AggQuantile {
-    fn agg_quantile(
-        &self,
-        _groups: &[(usize, Vec<usize>)],
-        _quantile: f64,
-    ) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_quantile(&self, _groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Series> {
         None
     }
 
-    fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
         self.agg_quantile(groups, 0.5)
     }
 }
@@ -715,11 +711,7 @@ where
     T::Native: PartialEq,
     ChunkedArray<T>: IntoSeries,
 {
-    fn agg_quantile(
-        &self,
-        groups: &[(usize, Vec<usize>)],
-        quantile: f64,
-    ) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], quantile: f64) -> Option<Series> {
         Some(
             groups
                 .into_par_iter()
@@ -764,7 +756,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         &self.groups
     }
 
-    pub(crate) fn keys(&self) -> Vec<Arc<dyn SeriesTrait>> {
+    pub(crate) fn keys(&self) -> Vec<Series> {
         // Keys will later be appended with the aggregation columns, so we already allocate extra space
         let size;
         if let Some(sel) = &self.selected_agg {
@@ -785,7 +777,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         keys
     }
 
-    fn prepare_agg(&self) -> Result<(Vec<Arc<dyn SeriesTrait>>, Vec<Arc<dyn SeriesTrait>>)> {
+    fn prepare_agg(&self) -> Result<(Vec<Series>, Vec<Series>)> {
         let selection = match &self.selected_agg {
             Some(selection) => selection.clone(),
             None => {
@@ -1501,7 +1493,7 @@ pub(crate) trait ChunkPivot {
     fn pivot<'a>(
         &self,
         _pivot_series: &'a (dyn SeriesTrait + 'a),
-        _keys: Vec<Arc<dyn SeriesTrait>>,
+        _keys: Vec<Series>,
         _groups: &[(usize, Vec<usize>)],
         _agg_type: PivotAgg,
     ) -> Result<DataFrame> {
@@ -1513,7 +1505,7 @@ pub(crate) trait ChunkPivot {
     fn pivot_count<'a>(
         &self,
         _pivot_series: &'a (dyn SeriesTrait + 'a),
-        _keys: Vec<Arc<dyn SeriesTrait>>,
+        _keys: Vec<Series>,
         _groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         Err(PolarsError::InvalidOperation(
@@ -1567,7 +1559,7 @@ where
     fn pivot<'a>(
         &self,
         pivot_series: &'a (dyn SeriesTrait + 'a),
-        keys: Vec<Arc<dyn SeriesTrait>>,
+        keys: Vec<Series>,
         groups: &[(usize, Vec<usize>)],
         agg_type: PivotAgg,
     ) -> Result<DataFrame> {
@@ -1629,7 +1621,7 @@ where
     fn pivot_count<'a>(
         &self,
         pivot_series: &'a (dyn SeriesTrait + 'a),
-        keys: Vec<Arc<dyn SeriesTrait>>,
+        keys: Vec<Series>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         pivot_count_impl(self, pivot_series, keys, groups)
@@ -1639,7 +1631,7 @@ where
 fn pivot_count_impl<'a, CA: TakeRandom>(
     ca: &CA,
     pivot_series: &'a (dyn SeriesTrait + 'a),
-    keys: Vec<Arc<dyn SeriesTrait>>,
+    keys: Vec<Series>,
     groups: &[(usize, Vec<usize>)],
 ) -> Result<DataFrame> {
     let pivot_vec: Vec<_> = pivot_series.as_groupable_iter()?.collect();
@@ -1686,7 +1678,7 @@ impl ChunkPivot for BooleanChunked {
     fn pivot_count<'a>(
         &self,
         pivot_series: &'a (dyn SeriesTrait + 'a),
-        keys: Vec<Arc<dyn SeriesTrait>>,
+        keys: Vec<Series>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         pivot_count_impl(self, pivot_series, keys, groups)
@@ -1696,7 +1688,7 @@ impl ChunkPivot for Utf8Chunked {
     fn pivot_count<'a>(
         &self,
         pivot_series: &'a (dyn SeriesTrait + 'a),
-        keys: Vec<Arc<dyn SeriesTrait>>,
+        keys: Vec<Series>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         pivot_count_impl(&self, pivot_series, keys, groups)

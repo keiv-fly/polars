@@ -179,53 +179,54 @@ impl<'a> Debug for (dyn SeriesTrait + 'a) {
     }
 }
 
-// impl Debug for Series {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         let limit = set_limit!(self);
-//
-//         match self {
-//             Series::UInt8(a) => format_array!(limit, f, a, "u8", a.name(), "Series"),
-//             Series::UInt16(a) => format_array!(limit, f, a, "u16", a.name(), "Series"),
-//             Series::UInt32(a) => format_array!(limit, f, a, "u32", a.name(), "Series"),
-//             Series::UInt64(a) => format_array!(limit, f, a, "u64", a.name(), "Series"),
-//             Series::Int8(a) => format_array!(limit, f, a, "i8", a.name(), "Series"),
-//             Series::Int16(a) => format_array!(limit, f, a, "i16", a.name(), "Series"),
-//             Series::Int32(a) => format_array!(limit, f, a, "i32", a.name(), "Series"),
-//             Series::Int64(a) => format_array!(limit, f, a, "i64", a.name(), "Series"),
-//             Series::Bool(a) => format_array!(limit, f, a, "bool", a.name(), "Series"),
-//             Series::Float32(a) => format_array!(limit, f, a, "f32", a.name(), "Series"),
-//             Series::Float64(a) => format_array!(limit, f, a, "f64", a.name(), "Series"),
-//             Series::Date32(a) => format_array!(limit, f, a, "date32(day)", a.name(), "Series"),
-//             Series::Date64(a) => format_array!(limit, f, a, "date64(ms)", a.name(), "Series"),
-//             Series::Time64Nanosecond(a) => {
-//                 format_array!(limit, f, a, "time64(ns)", a.name(), "Series")
-//             }
-//             Series::DurationNanosecond(a) => {
-//                 format_array!(limit, f, a, "duration(ns)", a.name(), "Series")
-//             }
-//             Series::DurationMillisecond(a) => {
-//                 format_array!(limit, f, a, "duration(ms)", a.name(), "Series")
-//             }
-//             #[cfg(feature = "dtype-interval")]
-//             Series::IntervalDayTime(a) => {
-//                 format_array!(limit, f, a, "interval(daytime)", a.name(), "Series")
-//             }
-//             #[cfg(feature = "dtype-interval")]
-//             Series::IntervalYearMonth(a) => {
-//                 format_array!(limit, f, a, "interval(year-month)", a.name(), "Series")
-//             }
-//             Series::Utf8(a) => format_utf8_array!(80, f, a, a.name(), "Series"),
-//             Series::List(a) => format_list_array!(limit, f, a, a.name(), "Series"),
-//             // Series::Object(a) => format_object_array(limit, f, &**a, a.name(), "Series"),
-//         }
-//     }
-// }
+impl Debug for Series {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let limit = set_limit!(self);
 
-// impl Display for Series {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Debug::fmt(self, f)
-//     }
-// }
+        todo!()
+        // match self {
+        //     Series::UInt8(a) => format_array!(limit, f, a, "u8", a.name(), "Series"),
+        //     Series::UInt16(a) => format_array!(limit, f, a, "u16", a.name(), "Series"),
+        //     Series::UInt32(a) => format_array!(limit, f, a, "u32", a.name(), "Series"),
+        //     Series::UInt64(a) => format_array!(limit, f, a, "u64", a.name(), "Series"),
+        //     Series::Int8(a) => format_array!(limit, f, a, "i8", a.name(), "Series"),
+        //     Series::Int16(a) => format_array!(limit, f, a, "i16", a.name(), "Series"),
+        //     Series::Int32(a) => format_array!(limit, f, a, "i32", a.name(), "Series"),
+        //     Series::Int64(a) => format_array!(limit, f, a, "i64", a.name(), "Series"),
+        //     Series::Bool(a) => format_array!(limit, f, a, "bool", a.name(), "Series"),
+        //     Series::Float32(a) => format_array!(limit, f, a, "f32", a.name(), "Series"),
+        //     Series::Float64(a) => format_array!(limit, f, a, "f64", a.name(), "Series"),
+        //     Series::Date32(a) => format_array!(limit, f, a, "date32(day)", a.name(), "Series"),
+        //     Series::Date64(a) => format_array!(limit, f, a, "date64(ms)", a.name(), "Series"),
+        //     Series::Time64Nanosecond(a) => {
+        //         format_array!(limit, f, a, "time64(ns)", a.name(), "Series")
+        //     }
+        //     Series::DurationNanosecond(a) => {
+        //         format_array!(limit, f, a, "duration(ns)", a.name(), "Series")
+        //     }
+        //     Series::DurationMillisecond(a) => {
+        //         format_array!(limit, f, a, "duration(ms)", a.name(), "Series")
+        //     }
+        //     #[cfg(feature = "dtype-interval")]
+        //     Series::IntervalDayTime(a) => {
+        //         format_array!(limit, f, a, "interval(daytime)", a.name(), "Series")
+        //     }
+        //     #[cfg(feature = "dtype-interval")]
+        //     Series::IntervalYearMonth(a) => {
+        //         format_array!(limit, f, a, "interval(year-month)", a.name(), "Series")
+        //     }
+        //     Series::Utf8(a) => format_utf8_array!(80, f, a, a.name(), "Series"),
+        //     Series::List(a) => format_list_array!(limit, f, a, a.name(), "Series"),
+        //     // Series::Object(a) => format_object_array(limit, f, &**a, a.name(), "Series"),
+        // }
+    }
+}
+
+impl Display for Series {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
 
 impl Debug for DataFrame {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

@@ -3,7 +3,7 @@ use crate::prelude::*;
 use std::collections::VecDeque;
 
 impl ListChunked {
-    pub fn explode(&self) -> Result<(Arc<dyn SeriesTrait>, Vec<usize>)> {
+    pub fn explode(&self) -> Result<(Series, Vec<usize>)> {
         macro_rules! impl_with_builder {
             ($self:expr, $builder:expr, $dtype:ty) => {{
                 let mut row_idx = Vec::with_capacity($self.len() * 10);

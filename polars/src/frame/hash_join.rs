@@ -364,7 +364,7 @@ pub trait ZipOuterJoinColumn {
         &self,
         _right_column: &dyn SeriesTrait,
         _opt_join_tuples: &[(Option<usize>, Option<usize>)],
-    ) -> Arc<dyn SeriesTrait> {
+    ) -> Series {
         unimplemented!()
     }
 }
@@ -378,7 +378,7 @@ where
         &self,
         right_column: &dyn SeriesTrait,
         opt_join_tuples: &[(Option<usize>, Option<usize>)],
-    ) -> Arc<dyn SeriesTrait> {
+    ) -> Series {
         let right_ca = self.unpack_series_matching_type(right_column).unwrap();
 
         let left_rand_access = self.take_rand();
@@ -414,7 +414,7 @@ macro_rules! impl_zip_outer_join {
                 &self,
                 right_column: &dyn SeriesTrait,
                 opt_join_tuples: &[(Option<usize>, Option<usize>)],
-            ) -> Arc<dyn SeriesTrait> {
+            ) -> Series {
                 let right_ca = self.unpack_series_matching_type(right_column).unwrap();
 
                 let left_rand_access = self.take_rand();

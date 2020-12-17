@@ -223,7 +223,7 @@ fn dummies_helper(mut groups: Vec<usize>, len: usize, name: &str) -> UInt8Chunke
     ChunkedArray::new_from_aligned_vec(name, av)
 }
 
-fn sort_columns(columns: Vec<Arc<dyn SeriesTrait>>) -> Vec<Arc<dyn SeriesTrait>> {
+fn sort_columns(columns: Vec<Series>) -> Vec<Series> {
     columns
         .into_iter()
         .sorted_by_key(|s| s.name().to_string())

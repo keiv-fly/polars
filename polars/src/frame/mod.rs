@@ -26,7 +26,7 @@ pub mod ser;
 mod upstream_traits;
 
 pub trait IntoSeries {
-    fn into_series(self) -> Arc<dyn SeriesTrait>
+    fn into_series(self) -> Series
     where
         Self: Sized,
     {
@@ -35,14 +35,14 @@ pub trait IntoSeries {
 }
 
 impl IntoSeries for Arc<dyn SeriesTrait> {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        self
+    fn into_series(self) -> Series {
+        Series(self)
     }
 }
 
 impl IntoSeries for Series {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        self.0
+    fn into_series(self) -> Series {
+        self
     }
 }
 
@@ -67,7 +67,7 @@ impl IntoSeries for Time64NanosecondChunked {}
 
 #[derive(Clone)]
 pub struct DataFrame {
-    pub(crate) columns: Vec<Arc<dyn SeriesTrait>>,
+    pub(crate) columns: Vec<Series>,
 }
 
 impl DataFrame {
@@ -150,14 +150,13 @@ impl DataFrame {
     }
 
     // doesn't check Series sizes.
-    pub(crate) fn new_no_checks(columns: Vec<Arc<dyn SeriesTrait>>) -> DataFrame {
+    pub(crate) fn new_no_checks(columns: Vec<Series>) -> DataFrame {
         DataFrame { columns }
     }
 
     /// Aggregate all chunks to contiguous memory.
     pub fn agg_chunks(&self) -> Self {
-        let f =
-            |s: &Arc<dyn SeriesTrait>| s.rechunk(Some(&[1])).expect("can always rechunk to single");
+        let f = |s: &Series| s.rechunk(Some(&[1])).expect("can always rechunk to single");
         // breakpoint for parallel aggregation
         let bp = std::env::var("POLARS_PAR_COLUMN_BP")
             .unwrap_or_else(|_| "".to_string())
@@ -220,7 +219,7 @@ impl DataFrame {
 
     /// Get a reference to the DataFrame columns.
     #[inline]
-    pub fn get_columns(&self) -> &Vec<Arc<dyn SeriesTrait>> {
+    pub fn get_columns(&self) -> &Vec<Series> {
         &self.columns
     }
 
@@ -270,7 +269,7 @@ impl DataFrame {
     }
 
     /// Get fields from the columns.
-    fn create_fields(columns: &[Arc<dyn SeriesTrait>]) -> Vec<Field> {
+    fn create_fields(columns: &[Series]) -> Vec<Field> {
         columns.iter().map(|s| s.field().clone()).collect()
     }
 
@@ -332,10 +331,7 @@ impl DataFrame {
         self.shape().0
     }
 
-    pub(crate) fn hstack_mut_no_checks(
-        &mut self,
-        columns: &[Arc<dyn SeriesTrait>],
-    ) -> Result<&mut Self> {
+    pub(crate) fn hstack_mut_no_checks(&mut self, columns: &[Series]) -> Result<&mut Self> {
         for col in columns {
             self.columns.push(col.clone());
         }
@@ -354,7 +350,7 @@ impl DataFrame {
     ///     df.hstack_mut(columns);
     /// }
     /// ```
-    pub fn hstack_mut(&mut self, columns: &[Arc<dyn SeriesTrait>]) -> Result<&mut Self> {
+    pub fn hstack_mut(&mut self, columns: &[Series]) -> Result<&mut Self> {
         let mut names = self.hash_names();
         let height = self.height();
         // first loop check validity. We don't do this in a single pass otherwise
@@ -383,7 +379,7 @@ impl DataFrame {
     /// Add multiple Series to a DataFrame
     /// The added Series are required to have the same length.
     /// ```
-    pub fn hstack(&self, columns: &[Arc<dyn SeriesTrait>]) -> Result<Self> {
+    pub fn hstack(&self, columns: &[Series]) -> Result<Self> {
         let mut new_cols = self.columns.clone();
         new_cols.extend_from_slice(columns);
         DataFrame::new(new_cols)
@@ -430,11 +426,11 @@ impl DataFrame {
     ///
     /// ```
     /// use polars::prelude::*;
-    /// fn drop_column(df: &mut DataFrame, name: &str) -> Result<Arc<dyn SeriesTrait>> {
+    /// fn drop_column(df: &mut DataFrame, name: &str) -> Result<Series> {
     ///     df.drop_in_place(name)
     /// }
     /// ```
-    pub fn drop_in_place(&mut self, name: &str) -> Result<Arc<dyn SeriesTrait>> {
+    pub fn drop_in_place(&mut self, name: &str) -> Result<Series> {
         let idx = self.name_to_idx(name)?;
         let result = Ok(self.columns.remove(idx));
         self.register_mutation()?;
@@ -480,11 +476,7 @@ impl DataFrame {
         Ok(DataFrame::new_no_checks(new_cols))
     }
 
-    fn insert_at_idx_no_name_check(
-        &mut self,
-        index: usize,
-        series: Arc<dyn SeriesTrait>,
-    ) -> Result<&mut Self> {
+    fn insert_at_idx_no_name_check(&mut self, index: usize, series: Series) -> Result<&mut Self> {
         if series.len() == self.height() {
             self.columns.insert(index, series);
             Ok(self)
@@ -556,7 +548,7 @@ impl DataFrame {
     }
 
     /// Select a series by index.
-    pub fn select_at_idx(&self, idx: usize) -> Option<&Arc<dyn SeriesTrait>> {
+    pub fn select_at_idx(&self, idx: usize) -> Option<&Series> {
         self.columns.get(idx)
     }
 
@@ -564,7 +556,7 @@ impl DataFrame {
     ///
     /// *Note: the length of the Series should remain the same otherwise the DataFrame is invalid.*
     /// For this reason the method is not public
-    fn select_at_idx_mut(&mut self, idx: usize) -> Option<&mut Arc<dyn SeriesTrait>> {
+    fn select_at_idx_mut(&mut self, idx: usize) -> Option<&mut Series> {
         self.columns.get_mut(idx)
     }
 
@@ -579,7 +571,7 @@ impl DataFrame {
     }
 
     /// Select a single column by name.
-    pub fn column(&self, name: &str) -> Result<&Arc<dyn SeriesTrait>> {
+    pub fn column(&self, name: &str) -> Result<&Series> {
         let idx = self
             .find_idx_by_name(name)
             .ok_or_else(|| PolarsError::NotFound(name.into()))?;
@@ -612,7 +604,7 @@ impl DataFrame {
     }
 
     /// Select column(s) from this DataFrame and return them into a Vector.
-    pub fn select_series<'a, S, J>(&self, selection: S) -> Result<Vec<Arc<dyn SeriesTrait>>>
+    pub fn select_series<'a, S, J>(&self, selection: S) -> Result<Vec<Series>>
     where
         S: Selection<'a, J>,
     {
@@ -627,7 +619,7 @@ impl DataFrame {
     /// Select a mutable series by name.
     /// *Note: the length of the Series should remain the same otherwise the DataFrame is invalid.*
     /// For this reason the method is not public
-    fn select_mut(&mut self, name: &str) -> Option<&mut Arc<dyn SeriesTrait>> {
+    fn select_mut(&mut self, name: &str) -> Option<&mut Series> {
         let opt_idx = self.find_idx_by_name(name);
 
         match opt_idx {
@@ -1544,7 +1536,7 @@ impl DataFrame {
 }
 
 pub struct RecordBatchIter<'a> {
-    columns: &'a Vec<Arc<dyn SeriesTrait>>,
+    columns: &'a Vec<Series>,
     schema: Arc<Schema>,
     buffer_size: usize,
     idx: usize,
