@@ -1176,7 +1176,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Count);
-            let mut builder = PrimitiveChunkedBuilder::new(&new_name, self.groups.len());
+            let mut builder = PrimitiveChunkedBuilder::<UInt32Type>::new(&new_name, self.groups.len());
             for (_first, idx) in &self.groups {
                 builder.append_value(idx.len() as u32);
             }
@@ -1282,7 +1282,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         macro_rules! finish_agg_opt {
             ($self:ident, $name_fmt:expr, $agg_fn:ident, $agg_col:ident, $cols:ident) => {{
                 let new_name = format![$name_fmt, $agg_col.name()];
-                let opt_agg = apply_method_all_arrow_series!($agg_col, $agg_fn, &$self.groups);
+                let opt_agg = $agg_col.$agg_fn(&$self.groups);
                 if let Some(mut agg) = opt_agg {
                     agg.rename(&new_name);
                     $cols.push(agg.into_series());
@@ -1292,7 +1292,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         macro_rules! finish_agg {
             ($self:ident, $name_fmt:expr, $agg_fn:ident, $agg_col:ident, $cols:ident) => {{
                 let new_name = format![$name_fmt, $agg_col.name()];
-                let mut agg = apply_method_all_arrow_series!($agg_col, $agg_fn, &$self.groups);
+                let mut agg = $agg_col.$agg_fn(&$self.groups);
                 agg.rename(&new_name);
                 $cols.push(agg.into_series());
             }};
@@ -1316,13 +1316,12 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                         "count" => {
                             let new_name = format!["{}_count", agg_col.name()];
                             let mut builder =
-                                PrimitiveChunkedBuilder::new(&new_name, self.groups.len());
+                                PrimitiveChunkedBuilder::<UInt32Type>::new(&new_name, self.groups.len());
                             for (_first, idx) in &self.groups {
                                 builder.append_value(idx.len() as u32);
                             }
                             let ca = builder.finish();
-                            let agg = Series::UInt32(ca);
-                            cols.push(agg);
+                            cols.push(ca.into_series());
                         }
                         a => panic!(format!("aggregation: {:?} is not supported", a)),
                     }
@@ -1366,9 +1365,9 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                     ListPrimitiveChunkedBuilder::new("", values_builder, self.groups.len());
                 for (_first, idx) in &self.groups {
                     let s = unsafe {
-                        $agg_col.take_iter_unchecked(idx.into_iter().copied(), Some(idx.len()))
+                        $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_opt_series(Some(&s))
+                    builder.append_opt_series(Some(&*s))
                 }
                 builder.finish().into_series()
             }};
@@ -1381,9 +1380,9 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                     ListUtf8ChunkedBuilder::new("", values_builder, self.groups.len());
                 for (_first, idx) in &self.groups {
                     let s = unsafe {
-                        $agg_col.take_iter_unchecked(idx.into_iter().copied(), Some(idx.len()))
+                        $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_series(&s)
+                    builder.append_series(&*s)
                 }
                 builder.finish().into_series()
             }};
@@ -1527,8 +1526,8 @@ pub struct Pivot<'df, 'selection_str> {
 trait ChunkPivot {
     fn pivot(
         &self,
-        _pivot_series: &Series,
-        _keys: Vec<Series>,
+        _pivot_series: &dyn SeriesTrait,
+        _keys: Vec<Arc<dyn SeriesTrait>>,
         _groups: &[(usize, Vec<usize>)],
         _agg_type: PivotAgg,
     ) -> Result<DataFrame> {
@@ -1539,8 +1538,8 @@ trait ChunkPivot {
 
     fn pivot_count(
         &self,
-        _pivot_series: &Series,
-        _keys: Vec<Series>,
+        _pivot_series: &dyn SeriesTrait,
+        _keys: Vec<Arc<dyn SeriesTrait>>,
         _groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         Err(PolarsError::InvalidOperation(
@@ -1589,11 +1588,12 @@ impl<T> ChunkPivot for ChunkedArray<T>
 where
     T: PolarsNumericType,
     T::Native: Copy + Num + NumCast,
+    ChunkedArray<T>: IntoSeries
 {
     fn pivot(
         &self,
-        pivot_series: &Series,
-        keys: Vec<Series>,
+        pivot_series: &dyn SeriesTrait,
+        keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
         agg_type: PivotAgg,
     ) -> Result<DataFrame> {
@@ -1654,8 +1654,8 @@ where
 
     fn pivot_count(
         &self,
-        pivot_series: &Series,
-        keys: Vec<Series>,
+        pivot_series: &dyn SeriesTrait,
+        keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         pivot_count_impl(self, pivot_series, keys, groups)
@@ -1664,8 +1664,8 @@ where
 
 fn pivot_count_impl<CA: TakeRandom>(
     ca: &CA,
-    pivot_series: &Series,
-    keys: Vec<Series>,
+    pivot_series: &dyn SeriesTrait,
+    keys: Vec<Arc<dyn SeriesTrait>>,
     groups: &[(usize, Vec<usize>)],
 ) -> Result<DataFrame> {
     let pivot_vec: Vec<_> = pivot_series.as_groupable_iter()?.collect();
@@ -1711,8 +1711,8 @@ fn pivot_count_impl<CA: TakeRandom>(
 impl ChunkPivot for BooleanChunked {
     fn pivot_count(
         &self,
-        pivot_series: &Series,
-        keys: Vec<Series>,
+        pivot_series: &dyn SeriesTrait,
+        keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         pivot_count_impl(self, pivot_series, keys, groups)
@@ -1721,8 +1721,8 @@ impl ChunkPivot for BooleanChunked {
 impl ChunkPivot for Utf8Chunked {
     fn pivot_count(
         &self,
-        pivot_series: &Series,
-        keys: Vec<Series>,
+        pivot_series: &dyn SeriesTrait,
+        keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         pivot_count_impl(&self, pivot_series, keys, groups)
@@ -1731,7 +1731,7 @@ impl ChunkPivot for Utf8Chunked {
 impl ChunkPivot for ListChunked {}
 impl<T> ChunkPivot for ObjectChunked<T> {}
 
-enum PivotAgg {
+pub(crate) enum PivotAgg {
     First,
     Sum,
     Min,
@@ -1826,96 +1826,48 @@ impl<'df, 'sel_str> Pivot<'df, 'sel_str> {
     pub fn count(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot_count,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups
-        )
+        values_series.pivot_count(&**pivot_series, self.gb.keys(), &self.gb.groups)
     }
 
     /// Aggregate the pivot results by taking the first occurring value.
     pub fn first(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups,
-            PivotAgg::First
-        )
+        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::First)
     }
 
     /// Aggregate the pivot results by taking the sum of all duplicates.
     pub fn sum(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups,
-            PivotAgg::Sum
-        )
+        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Sum)
     }
 
     /// Aggregate the pivot results by taking the minimal value of all duplicates.
     pub fn min(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups,
-            PivotAgg::Min
-        )
+        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Min)
     }
 
     /// Aggregate the pivot results by taking the maximum value of all duplicates.
     pub fn max(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups,
-            PivotAgg::Max
-        )
+        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Max)
     }
 
     /// Aggregate the pivot results by taking the mean value of all duplicates.
     pub fn mean(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups,
-            PivotAgg::Mean
-        )
+        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Mean)
     }
     /// Aggregate the pivot results by taking the median value of all duplicates.
     pub fn median(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        apply_method_all_arrow_series!(
-            values_series,
-            pivot,
-            pivot_series,
-            self.gb.keys(),
-            &self.gb.groups,
-            PivotAgg::Median
-        )
+        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Median)
     }
 }
 

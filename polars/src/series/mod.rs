@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 pub(crate) mod private {
     use super::*;
+    use crate::frame::group_by::PivotAgg;
 
     pub(crate) trait Agg {
         fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
@@ -33,6 +34,20 @@ pub(crate) mod private {
         fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
         fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>>;
         fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn pivot(
+            &self,
+            pivot_series: &dyn SeriesTrait,
+            keys: Vec<Arc<dyn SeriesTrait>>,
+            groups: &[(usize, Vec<usize>)],
+            agg_type: PivotAgg,
+        ) -> Result<DataFrame>;
+
+        fn pivot_count(
+            &self,
+            pivot_series: &dyn SeriesTrait,
+            keys: Vec<Arc<dyn SeriesTrait>>,
+            groups: &[(usize, Vec<usize>)],
+        ) -> Result<DataFrame>;
     }
 }
 

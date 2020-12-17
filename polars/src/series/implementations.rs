@@ -9,6 +9,7 @@ use regex::internal::Input;
 use std::sync::Arc;
 use crate::fmt::FmtList;
 use super::private;
+use crate::frame::group_by::PivotAgg;
 
 pub(crate) struct Wrap<T>(pub T);
 
@@ -72,6 +73,14 @@ impl<T> private::Agg for Wrap<ChunkedArray<T>>
     }
 
     fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn pivot(&self, pivot_series: &dyn SeriesTrait, keys: Vec<Arc<dyn SeriesTrait>>, groups: &[(usize, Vec<usize>)], agg_type: PivotAgg) -> Result<DataFrame> {
+        unimplemented!()
+    }
+
+    fn pivot_count(&self, pivot_series: &dyn SeriesTrait, keys: Vec<Arc<dyn SeriesTrait>>, groups: &[(usize, Vec<usize>)]) -> Result<DataFrame> {
         unimplemented!()
     }
 }
