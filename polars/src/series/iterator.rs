@@ -47,20 +47,6 @@ impl<'a> FromIterator<&'a str> for Series {
     }
 }
 
-impl<'a> FromIterator<&'a dyn SeriesTrait> for Series {
-    fn from_iter<I: IntoIterator<Item = &'a dyn SeriesTrait>>(iter: I) -> Self {
-        let ca: ListChunked = iter.into_iter().collect();
-        ca.into_series()
-    }
-}
-
-impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for Series {
-    fn from_iter<I: IntoIterator<Item = Option<&'a dyn SeriesTrait>>>(iter: I) -> Self {
-        let ca: ListChunked = iter.into_iter().collect();
-        ca.into_series()
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::prelude::*;

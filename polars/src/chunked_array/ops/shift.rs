@@ -141,19 +141,15 @@ impl ChunkShift<Utf8Type> for Utf8Chunked {
     }
 }
 
-impl ChunkShiftFill<ListType, Option<&dyn SeriesTrait>> for ListChunked {
-    fn shift_and_fill(
-        &self,
-        periods: i32,
-        fill_value: Option<&dyn SeriesTrait>,
-    ) -> Result<ListChunked> {
+impl ChunkShiftFill<ListType, Option<&Series>> for ListChunked {
+    fn shift_and_fill(&self, periods: i32, fill_value: Option<&Series>) -> Result<ListChunked> {
         if periods.abs() >= self.len() as i32 {
             return Err(PolarsError::OutOfBounds(
                 format!("The value of parameter `periods`: {} in the shift operation is larger than the length of the ChunkedArray: {}", periods, self.len()).into()));
         }
         let dt = self.get_inner_dtype();
         let mut builder = get_list_builder(dt, self.len(), self.name());
-        fn append_fn(builder: &mut Box<dyn ListBuilderTrait>, v: Option<&dyn SeriesTrait>) {
+        fn append_fn(builder: &mut Box<dyn ListBuilderTrait>, v: Option<&Series>) {
             builder.append_opt_series(v);
         }
 
@@ -167,13 +163,13 @@ impl ChunkShiftFill<ListType, Option<&dyn SeriesTrait>> for ListChunked {
             }
             self.into_iter()
                 .take(amount)
-                .for_each(|opt| append_fn(&mut builder, opt.as_ref().map(|s| &**s)));
+                .for_each(|opt| append_fn(&mut builder, opt.as_ref()));
             // Fill the back of the array
         } else {
             self.into_iter()
                 .skip(skip)
                 .take(amount)
-                .for_each(|opt| append_fn(&mut builder, opt.as_ref().map(|s| &**s)));
+                .for_each(|opt| append_fn(&mut builder, opt.as_ref()));
             for _ in 0..periods.abs() {
                 builder.append_opt_series(fill_value)
             }

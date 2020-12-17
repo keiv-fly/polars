@@ -1254,9 +1254,9 @@ impl_all_iterators!(
 );
 
 // used for macro
-fn return_from_list_iter(method_name: &str, v: ArrayRef) -> Arc<dyn SeriesTrait> {
+fn return_from_list_iter(method_name: &str, v: ArrayRef) -> Series {
     let s: Wrap<_> = (method_name, v).into();
-    s.0
+    Series(s.0)
 }
 
 impl_all_iterators!(
@@ -1266,7 +1266,7 @@ impl_all_iterators!(
     ListIterSingleChunkNullCheck,
     ListIterManyChunk,
     ListIterManyChunkNullCheck,
-    Arc<dyn SeriesTrait>,
+    Series,
     return_from_list_iter
 );
 

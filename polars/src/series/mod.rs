@@ -930,7 +930,7 @@ impl<T: AsRef<[Series]>> NamedFrom<T, ListType> for Series {
         let dt = series_slice[0].dtype();
         let mut builder = get_list_builder(dt, series_slice.len(), name);
         for series in series_slice {
-            builder.append_series(series.deref())
+            builder.append_series(series)
         }
         builder.finish().into_series()
     }

@@ -665,7 +665,7 @@ where
                     let s = unsafe {
                         $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_opt_series(Some(s.as_ref()))
+                    builder.append_opt_series(Some(&s))
                 }
                 builder.finish().into_series()
             }};
@@ -679,7 +679,7 @@ where
                     let s = unsafe {
                         $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_series(s.as_ref())
+                    builder.append_series(&s)
                 }
                 builder.finish().into_series()
             }};
@@ -1333,7 +1333,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                     let s = unsafe {
                         $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_opt_series(Some(&*s))
+                    builder.append_opt_series(Some(&s))
                 }
                 builder.finish().into_series()
             }};
@@ -1348,7 +1348,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                     let s = unsafe {
                         $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_series(&*s)
+                    builder.append_series(&s)
                 }
                 builder.finish().into_series()
             }};
