@@ -1497,7 +1497,7 @@ pub struct Pivot<'df, 'selection_str> {
     values_column: &'selection_str str,
 }
 
-trait ChunkPivot {
+pub(crate) trait ChunkPivot {
     fn pivot<'a>(
         &self,
         _pivot_series: &'a (dyn SeriesTrait + 'a),
