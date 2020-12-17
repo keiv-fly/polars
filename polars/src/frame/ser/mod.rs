@@ -83,9 +83,9 @@ where
     ChunkedArray::new_from_chunks(field.name(), vec![arr.clone()])
 }
 
-fn arr_to_series(arr: &ArrayRef, field: &Field) -> Arc<dyn SeriesTrait> {
+fn arr_to_series(arr: &ArrayRef, field: &Field) -> Series {
     let s: Wrap<_> = (field.name().as_str(), arr.clone()).into();
-    s.0
+    Series(s.0)
 }
 
 pub fn finish_reader<R: ArrowReader>(

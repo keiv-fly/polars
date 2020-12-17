@@ -1192,7 +1192,7 @@ impl Builder {
         }
     }
 
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
+    fn into_series(self) -> Series {
         use Builder::*;
         match self {
             Utf8(b) => b.finish().into_series(),

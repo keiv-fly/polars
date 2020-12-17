@@ -329,7 +329,7 @@ fn evaluate_physical_expressions(
     let mut selected_columns = exprs
         .par_iter()
         .map(|expr| expr.evaluate(df))
-        .collect::<Result<Vec<Arc<dyn SeriesTrait>>>>()?;
+        .collect::<Result<Vec<Series>>>()?;
 
     // If all series are the same length it is ok. If not we can broadcast Series of length one.
     if selected_columns.len() > 1 {

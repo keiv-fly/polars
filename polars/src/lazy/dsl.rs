@@ -11,14 +11,14 @@ use std::{
 };
 
 pub trait Udf: Send + Sync {
-    fn call_udf(&self, s: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>>;
+    fn call_udf(&self, s: &dyn SeriesTrait) -> Result<Series>;
 }
 
 impl<F> Udf for F
 where
-    F: Fn(&dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> + Send + Sync,
+    F: Fn(&dyn SeriesTrait) -> Result<Series> + Send + Sync,
 {
-    fn call_udf(&self, s: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+    fn call_udf(&self, s: &dyn SeriesTrait) -> Result<Series> {
         self(s)
     }
 }

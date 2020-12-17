@@ -4,18 +4,18 @@ use std::ops::{
     Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
 };
 
-impl FromIterator<Arc<dyn SeriesTrait>> for DataFrame {
+impl FromIterator<Series> for DataFrame {
     /// # Panics
     ///
     /// Panics if Series have different lengths.
-    fn from_iter<T: IntoIterator<Item = Arc<dyn SeriesTrait>>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = Series>>(iter: T) -> Self {
         let v = iter.into_iter().collect();
         DataFrame::new(v).expect("could not create DataFrame from iterator")
     }
 }
 
 impl Index<usize> for DataFrame {
-    type Output = Arc<dyn SeriesTrait>;
+    type Output = Series;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.columns[index]
@@ -25,7 +25,7 @@ impl Index<usize> for DataFrame {
 macro_rules! impl_ranges {
     ($range_type:ty) => {
         impl Index<$range_type> for DataFrame {
-            type Output = [Arc<dyn SeriesTrait>];
+            type Output = [Series];
 
             fn index(&self, index: $range_type) -> &Self::Output {
                 &self.columns[index]
@@ -43,7 +43,7 @@ impl_ranges!(RangeFull);
 
 // we don't implement Borrow<str> or AsRef<str> as upstream crates may add impl of trait for usize.
 impl Index<&str> for DataFrame {
-    type Output = Arc<dyn SeriesTrait>;
+    type Output = Series;
 
     fn index(&self, index: &str) -> &Self::Output {
         let idx = self.name_to_idx(index).unwrap();

@@ -306,13 +306,15 @@ impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for ListChunked {
 }
 impl FromIterator<Option<Series>> for ListChunked {
     fn from_iter<I: IntoIterator<Item = Option<Series>>>(iter: I) -> Self {
-        impl_from_iter_opt_series!(iter.into_iter().map(|opt_s| opt_s.map(|s| s.as_ref())))
+        let iter = iter.into_iter().map(|opt_s| opt_s.map(|s| s.0));
+        impl_from_iter_opt_series!(iter)
     }
 }
 
 impl<'a> FromIterator<Option<&'a Series>> for ListChunked {
     fn from_iter<I: IntoIterator<Item = Option<&'a Series>>>(iter: I) -> Self {
-        impl_from_iter_opt_series!(iter.into_iter().map(|s| opt_s.map(|s| s.as_ref())))
+        let iter = iter.into_iter().map(|opt_s| opt_s.map(|s| s.as_ref()));
+        impl_from_iter_opt_series!(iter)
     }
 }
 

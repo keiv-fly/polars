@@ -882,7 +882,7 @@ macro_rules! impl_named_from {
     ($type:ty, $series_var:ident, $method:ident) => {
         impl<T: AsRef<$type>> NamedFrom<T, $type> for Series {
             fn new(name: &str, v: T) -> Self {
-                Series(ChunkedArray::<$series_var>::$method(name, v.as_ref()).into_series())
+                ChunkedArray::<$series_var>::$method(name, v.as_ref()).into_series()
             }
         }
     };
@@ -890,12 +890,12 @@ macro_rules! impl_named_from {
 
 impl<'a, T: AsRef<[&'a str]>> NamedFrom<T, [&'a str]> for Series {
     fn new(name: &str, v: T) -> Self {
-        Series(Utf8Chunked::new_from_slice(name, v.as_ref()).into_series())
+        Utf8Chunked::new_from_slice(name, v.as_ref()).into_series()
     }
 }
 impl<'a, T: AsRef<[Option<&'a str>]>> NamedFrom<T, [Option<&'a str>]> for Series {
     fn new(name: &str, v: T) -> Self {
-        Series(Utf8Chunked::new_from_opt_slice(name, v.as_ref()).into_series())
+        Utf8Chunked::new_from_opt_slice(name, v.as_ref()).into_series()
     }
 }
 
@@ -932,7 +932,7 @@ impl<T: AsRef<[Series]>> NamedFrom<T, ListType> for Series {
         for series in series_slice {
             builder.append_series(series.deref())
         }
-        Series(builder.finish().into_series())
+        builder.finish().into_series()
     }
 }
 //
@@ -1096,7 +1096,7 @@ impl From<(&str, ArrayRef)> for Wrap<Arc<dyn SeriesTrait>> {
             ArrowDataType::List(_) => ListChunked::new_from_chunks(name, chunk).into_series(),
             dt => panic!(format!("datatype {:?} not supported", dt)),
         };
-        Wrap(s)
+        Wrap(s.0)
     }
 }
 //

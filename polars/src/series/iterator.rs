@@ -8,21 +8,21 @@ macro_rules! from_iterator {
         impl FromIterator<Option<$native>> for Series {
             fn from_iter<I: IntoIterator<Item = Option<$native>>>(iter: I) -> Self {
                 let ca: ChunkedArray<$variant> = iter.into_iter().collect();
-                Series(ca.into_series())
+                ca.into_series()
             }
         }
 
         impl FromIterator<$native> for Series {
             fn from_iter<I: IntoIterator<Item = $native>>(iter: I) -> Self {
                 let ca: Xob<ChunkedArray<$variant>> = iter.into_iter().collect();
-                Series(ca.into_inner().into_series())
+                ca.into_inner().into_series()
             }
         }
 
         impl<'a> FromIterator<&'a $native> for Series {
             fn from_iter<I: IntoIterator<Item = &'a $native>>(iter: I) -> Self {
                 let ca: ChunkedArray<$variant> = iter.into_iter().map(|v| Some(*v)).collect();
-                Series(ca.into_series())
+                ca.into_series()
             }
         }
     };
@@ -40,24 +40,24 @@ from_iterator!(f32, Float32Type);
 from_iterator!(f64, Float64Type);
 from_iterator!(bool, BooleanType);
 
-impl<'a> FromIterator<&'a str> for Wrap<Arc<dyn SeriesTrait>> {
+impl<'a> FromIterator<&'a str> for Series {
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> Self {
         let ca: Utf8Chunked = iter.into_iter().collect();
-        Wrap(ca.into_series())
+        ca.into_series()
     }
 }
 
-impl<'a> FromIterator<&'a dyn SeriesTrait> for Wrap<Arc<dyn SeriesTrait>> {
-    fn from_iter<I: IntoIterator<Item = &'a SeriesTrait>>(iter: I) -> Self {
+impl<'a> FromIterator<&'a dyn SeriesTrait> for Series {
+    fn from_iter<I: IntoIterator<Item = &'a dyn SeriesTrait>>(iter: I) -> Self {
         let ca: ListChunked = iter.into_iter().collect();
-        Wrap(ca.into_series())
+        ca.into_series()
     }
 }
 
-impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for Wrap<Arc<dyn SeriesTrait>> {
+impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for Series {
     fn from_iter<I: IntoIterator<Item = Option<&'a dyn SeriesTrait>>>(iter: I) -> Self {
         let ca: ListChunked = iter.into_iter().collect();
-        Wrap(ca.into_series())
+        ca.into_series()
     }
 }
 

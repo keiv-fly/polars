@@ -35,7 +35,7 @@ pub trait PhysicalExpr: Send + Sync {
     }
 
     /// Take a DataFrame and evaluate the expression.
-    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>>;
+    fn evaluate(&self, df: &DataFrame) -> Result<Series>;
 
     /// Get the output field of this expr
     fn to_field(&self, input_schema: &Schema) -> Result<Field>;
@@ -46,9 +46,5 @@ pub trait PhysicalExpr: Send + Sync {
 }
 
 pub trait AggPhysicalExpr {
-    fn evaluate(
-        &self,
-        df: &DataFrame,
-        groups: &[(usize, Vec<usize>)],
-    ) -> Result<Option<Arc<dyn SeriesTrait>>>;
+    fn evaluate(&self, df: &DataFrame, groups: &[(usize, Vec<usize>)]) -> Result<Option<Series>>;
 }
