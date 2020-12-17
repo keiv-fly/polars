@@ -32,19 +32,23 @@ pub(crate) mod private {
         fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
         fn agg_n_unique(&self, groups: &[(usize, Vec<usize>)]) -> Option<UInt32Chunked>;
         fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
-        fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>>;
-        fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
-        fn pivot(
+        fn agg_quantile(
             &self,
-            pivot_series: &dyn SeriesTrait,
+            groups: &[(usize, Vec<usize>)],
+            _quantile: f64,
+        ) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn pivot<'a>(
+            &self,
+            pivot_series: &'a (dyn SeriesTrait + 'a),
             keys: Vec<Arc<dyn SeriesTrait>>,
             groups: &[(usize, Vec<usize>)],
             agg_type: PivotAgg,
         ) -> Result<DataFrame>;
 
-        fn pivot_count(
+        fn pivot_count<'a>(
             &self,
-            pivot_series: &dyn SeriesTrait,
+            pivot_series: &'a (dyn SeriesTrait + 'a),
             keys: Vec<Arc<dyn SeriesTrait>>,
             groups: &[(usize, Vec<usize>)],
         ) -> Result<DataFrame>;
@@ -670,12 +674,10 @@ pub trait SeriesTrait: Send + Sync + private::Agg {
 }
 
 impl dyn SeriesTrait {
-
     pub fn unpack<N>(&self) -> Result<&ChunkedArray<N>>
-        where
-            N: PolarsDataType,
+    where
+        N: PolarsDataType,
     {
-
         if N::get_data_type() == self.dtype() {
             Ok(self.as_ref())
         } else {

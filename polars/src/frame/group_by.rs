@@ -161,7 +161,7 @@ where
     Box::new(iter)
 }
 
-impl dyn SeriesTrait {
+impl<'b> (dyn SeriesTrait + 'b) {
     fn as_groupable_iter<'a>(&'a self) -> Result<Box<dyn Iterator<Item = Option<Groupable>> + 'a>> {
         macro_rules! as_groupable_iter {
             ($ca:expr, $variant:ident ) => {{
@@ -733,7 +733,11 @@ where
 }
 
 pub(crate) trait AggQuantile {
-    fn agg_quantile(&self, _groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_quantile(
+        &self,
+        _groups: &[(usize, Vec<usize>)],
+        _quantile: f64,
+    ) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
 
@@ -746,9 +750,13 @@ impl<T> AggQuantile for ChunkedArray<T>
 where
     T: PolarsNumericType + Sync,
     T::Native: PartialEq,
-    ChunkedArray<T>: IntoSeries
+    ChunkedArray<T>: IntoSeries,
 {
-    fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], quantile: f64) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_quantile(
+        &self,
+        groups: &[(usize, Vec<usize>)],
+        quantile: f64,
+    ) -> Option<Arc<dyn SeriesTrait>> {
         Some(
             groups
                 .into_par_iter()
@@ -1176,7 +1184,8 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Count);
-            let mut builder = PrimitiveChunkedBuilder::<UInt32Type>::new(&new_name, self.groups.len());
+            let mut builder =
+                PrimitiveChunkedBuilder::<UInt32Type>::new(&new_name, self.groups.len());
             for (_first, idx) in &self.groups {
                 builder.append_value(idx.len() as u32);
             }
@@ -1315,8 +1324,10 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                         "median" => finish_agg_opt!(self, "{}_median", agg_n_unique, agg_col, cols),
                         "count" => {
                             let new_name = format!["{}_count", agg_col.name()];
-                            let mut builder =
-                                PrimitiveChunkedBuilder::<UInt32Type>::new(&new_name, self.groups.len());
+                            let mut builder = PrimitiveChunkedBuilder::<UInt32Type>::new(
+                                &new_name,
+                                self.groups.len(),
+                            );
                             for (_first, idx) in &self.groups {
                                 builder.append_value(idx.len() as u32);
                             }
@@ -1524,9 +1535,9 @@ pub struct Pivot<'df, 'selection_str> {
 }
 
 trait ChunkPivot {
-    fn pivot(
+    fn pivot<'a>(
         &self,
-        _pivot_series: &dyn SeriesTrait,
+        _pivot_series: &'a (dyn SeriesTrait + 'a),
         _keys: Vec<Arc<dyn SeriesTrait>>,
         _groups: &[(usize, Vec<usize>)],
         _agg_type: PivotAgg,
@@ -1536,9 +1547,9 @@ trait ChunkPivot {
         ))
     }
 
-    fn pivot_count(
+    fn pivot_count<'a>(
         &self,
-        _pivot_series: &dyn SeriesTrait,
+        _pivot_series: &'a (dyn SeriesTrait + 'a),
         _keys: Vec<Arc<dyn SeriesTrait>>,
         _groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
@@ -1588,11 +1599,11 @@ impl<T> ChunkPivot for ChunkedArray<T>
 where
     T: PolarsNumericType,
     T::Native: Copy + Num + NumCast,
-    ChunkedArray<T>: IntoSeries
+    ChunkedArray<T>: IntoSeries,
 {
-    fn pivot(
+    fn pivot<'a>(
         &self,
-        pivot_series: &dyn SeriesTrait,
+        pivot_series: &'a (dyn SeriesTrait + 'a),
         keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
         agg_type: PivotAgg,
@@ -1652,9 +1663,9 @@ where
         DataFrame::new(cols)
     }
 
-    fn pivot_count(
+    fn pivot_count<'a>(
         &self,
-        pivot_series: &dyn SeriesTrait,
+        pivot_series: &'a (dyn SeriesTrait + 'a),
         keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
@@ -1662,9 +1673,9 @@ where
     }
 }
 
-fn pivot_count_impl<CA: TakeRandom>(
+fn pivot_count_impl<'a, CA: TakeRandom>(
     ca: &CA,
-    pivot_series: &dyn SeriesTrait,
+    pivot_series: &'a (dyn SeriesTrait + 'a),
     keys: Vec<Arc<dyn SeriesTrait>>,
     groups: &[(usize, Vec<usize>)],
 ) -> Result<DataFrame> {
@@ -1709,9 +1720,9 @@ fn pivot_count_impl<CA: TakeRandom>(
 }
 
 impl ChunkPivot for BooleanChunked {
-    fn pivot_count(
+    fn pivot_count<'a>(
         &self,
-        pivot_series: &dyn SeriesTrait,
+        pivot_series: &'a (dyn SeriesTrait + 'a),
         keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
@@ -1719,9 +1730,9 @@ impl ChunkPivot for BooleanChunked {
     }
 }
 impl ChunkPivot for Utf8Chunked {
-    fn pivot_count(
+    fn pivot_count<'a>(
         &self,
-        pivot_series: &dyn SeriesTrait,
+        pivot_series: &'a (dyn SeriesTrait + 'a),
         keys: Vec<Arc<dyn SeriesTrait>>,
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
@@ -1833,41 +1844,71 @@ impl<'df, 'sel_str> Pivot<'df, 'sel_str> {
     pub fn first(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::First)
+        values_series.pivot(
+            &**pivot_series,
+            self.gb.keys(),
+            &self.gb.groups,
+            PivotAgg::First,
+        )
     }
 
     /// Aggregate the pivot results by taking the sum of all duplicates.
     pub fn sum(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Sum)
+        values_series.pivot(
+            &**pivot_series,
+            self.gb.keys(),
+            &self.gb.groups,
+            PivotAgg::Sum,
+        )
     }
 
     /// Aggregate the pivot results by taking the minimal value of all duplicates.
     pub fn min(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Min)
+        values_series.pivot(
+            &**pivot_series,
+            self.gb.keys(),
+            &self.gb.groups,
+            PivotAgg::Min,
+        )
     }
 
     /// Aggregate the pivot results by taking the maximum value of all duplicates.
     pub fn max(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Max)
+        values_series.pivot(
+            &**pivot_series,
+            self.gb.keys(),
+            &self.gb.groups,
+            PivotAgg::Max,
+        )
     }
 
     /// Aggregate the pivot results by taking the mean value of all duplicates.
     pub fn mean(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Mean)
+        values_series.pivot(
+            &**pivot_series,
+            self.gb.keys(),
+            &self.gb.groups,
+            PivotAgg::Mean,
+        )
     }
     /// Aggregate the pivot results by taking the median value of all duplicates.
     pub fn median(&self) -> Result<DataFrame> {
         let pivot_series = self.gb.df.column(self.pivot_column)?;
         let values_series = self.gb.df.column(self.values_column)?;
-        values_series.pivot(&**pivot_series, self.gb.keys(), &self.gb.groups, PivotAgg::Median)
+        values_series.pivot(
+            &**pivot_series,
+            self.gb.keys(),
+            &self.gb.groups,
+            PivotAgg::Median,
+        )
     }
 }
 

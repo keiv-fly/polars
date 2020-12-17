@@ -1,15 +1,15 @@
+use super::private;
 use super::SeriesTrait;
 use crate::chunked_array::ops::aggregate::{ChunkAggSeries, VarAggSeries};
 use crate::datatypes::ArrowDataType;
+use crate::fmt::FmtList;
+use crate::frame::group_by::PivotAgg;
 use crate::prelude::*;
 use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
 use regex::internal::Input;
 use std::sync::Arc;
-use crate::fmt::FmtList;
-use super::private;
-use crate::frame::group_by::PivotAgg;
 
 pub(crate) struct Wrap<T>(pub T);
 
@@ -33,10 +33,10 @@ where
 }
 
 impl<T> private::Agg for Wrap<ChunkedArray<T>>
-    where
-        T: 'static + PolarsDataType + Send + Sync,
+where
+    T: 'static + PolarsDataType + Send + Sync,
 {
-    fn agg_mean(&self, _groups: &[(usize, Vec<usize >)]) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_mean(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 
@@ -68,7 +68,11 @@ impl<T> private::Agg for Wrap<ChunkedArray<T>>
         unimplemented!()
     }
 
-    fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>> {
+    fn agg_quantile(
+        &self,
+        groups: &[(usize, Vec<usize>)],
+        _quantile: f64,
+    ) -> Option<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 
@@ -76,11 +80,22 @@ impl<T> private::Agg for Wrap<ChunkedArray<T>>
         unimplemented!()
     }
 
-    fn pivot(&self, pivot_series: &dyn SeriesTrait, keys: Vec<Arc<dyn SeriesTrait>>, groups: &[(usize, Vec<usize>)], agg_type: PivotAgg) -> Result<DataFrame> {
+    fn pivot<'a>(
+        &self,
+        pivot_series: &'a (dyn SeriesTrait + 'a),
+        keys: Vec<Arc<dyn SeriesTrait>>,
+        groups: &[(usize, Vec<usize>)],
+        agg_type: PivotAgg,
+    ) -> Result<DataFrame> {
         unimplemented!()
     }
 
-    fn pivot_count(&self, pivot_series: &dyn SeriesTrait, keys: Vec<Arc<dyn SeriesTrait>>, groups: &[(usize, Vec<usize>)]) -> Result<DataFrame> {
+    fn pivot_count<'a>(
+        &self,
+        pivot_series: &'a (dyn SeriesTrait + 'a),
+        keys: Vec<Arc<dyn SeriesTrait>>,
+        groups: &[(usize, Vec<usize>)],
+    ) -> Result<DataFrame> {
         unimplemented!()
     }
 }
@@ -103,8 +118,7 @@ where
         + ChunkWindow
         + ChunkAggSeries
         + VarAggSeries
-        + FmtList
-,
+        + FmtList,
 {
     fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
         self.group_tuples()
