@@ -1705,7 +1705,7 @@ impl ChunkPivot for Utf8Chunked {
 impl ChunkPivot for ListChunked {}
 impl<T> ChunkPivot for ObjectChunked<T> {}
 
-pub(crate) enum PivotAgg {
+pub enum PivotAgg {
     First,
     Sum,
     Min,

@@ -359,7 +359,7 @@ impl HashJoin<Utf8Type> for Utf8Chunked {
     }
 }
 
-pub(crate) trait ZipOuterJoinColumn {
+pub trait ZipOuterJoinColumn {
     fn zip_outer_join_column(
         &self,
         _right_column: &dyn SeriesTrait,

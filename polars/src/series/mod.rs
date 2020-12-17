@@ -18,11 +18,12 @@ use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
 use std::sync::Arc;
 
+// make private
 pub(crate) mod private {
     use super::*;
     use crate::frame::group_by::PivotAgg;
 
-    pub(crate) trait PrivateSeries {
+    pub trait PrivateSeries {
         fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
             unimplemented!()
         }
@@ -108,13 +109,13 @@ pub(crate) mod private {
         fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
             unimplemented!()
         }
+        fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
+            unimplemented!()
+        }
     }
 }
 
 pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
-    fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
-        unimplemented!()
-    }
     /// Get Arrow ArrayData
     fn array_data(&self) -> Vec<ArrayDataRef> {
         unimplemented!()
@@ -130,7 +131,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Rename series.
-    fn rename(&mut self, _name: &str) -> &mut dyn SeriesTrait {
+    fn rename(&self, _name: &str) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
 
@@ -293,7 +294,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         ))
     }
 
-    fn append_array(&mut self, _other: ArrayRef) -> Result<&mut dyn SeriesTrait> {
+    fn append_array(&self, _other: ArrayRef) -> Result<&Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 
@@ -308,7 +309,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Append a Series of the same type in place.
-    fn append(&mut self, other: &dyn SeriesTrait) -> Result<&mut dyn SeriesTrait> {
+    fn append(&self, other: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 

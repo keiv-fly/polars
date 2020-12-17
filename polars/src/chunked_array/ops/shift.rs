@@ -167,13 +167,13 @@ impl ChunkShiftFill<ListType, Option<&dyn SeriesTrait>> for ListChunked {
             }
             self.into_iter()
                 .take(amount)
-                .for_each(|opt| append_fn(&mut builder, opt.map(|s| &*s)));
+                .for_each(|opt| append_fn(&mut builder, opt.as_ref().map(|s| &**s)));
             // Fill the back of the array
         } else {
             self.into_iter()
                 .skip(skip)
                 .take(amount)
-                .for_each(|opt| append_fn(&mut builder, opt.map(|s| &*s)));
+                .for_each(|opt| append_fn(&mut builder, opt.as_ref().map(|s| &**s)));
             for _ in 0..periods.abs() {
                 builder.append_opt_series(fill_value)
             }
