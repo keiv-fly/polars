@@ -8,6 +8,7 @@ use crate::{datatypes::PolarsNumericType, prelude::*};
 use arrow::compute;
 use num::{Bounded, Num, NumCast, ToPrimitive};
 use std::cmp::{Ordering, PartialOrd};
+use std::hash::Hash;
 use std::sync::Arc;
 
 /// Aggregations that return Series of unit length. Those can be used in broadcasting operations.
@@ -278,56 +279,45 @@ impl ChunkAgg<u32> for BooleanChunked {
 // Needs the same trait bounds as the implementation of ChunkedArray<T> of dyn Series
 impl<T> ChunkAggSeries for ChunkedArray<T>
 where
-    T: PolarsNumericType + Send + Sync,
-    T::Native: PartialOrd + Num + NumCast + Bounded,
-    ChunkedArray<T>: ChunkFilter<T>
-        + ChunkTake
-        + ChunkOps
-        + ChunkExpandAtIndex<T>
-        + ToDummies<T>
-        + ChunkUnique<T>
-        + ChunkSort<T>
-        + ChunkReverse<T>
-        + ChunkShift<T>
-        + ChunkFillNone
-        + ChunkZip<T>
-        + VarAggSeries,
+    T: PolarsNumericType,
+    T::Native: PartialOrd + Num + NumCast + Bounded + Hash + Eq + NumComp,
+    ChunkedArray<T>: IntoSeries,
 {
     fn sum_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.sum();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
+        ca.into_series()
     }
     fn max_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.max();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
+        ca.into_series()
     }
     fn min_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.min();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
+        ca.into_series()
     }
     fn mean_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.mean();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
+        ca.into_series()
     }
     fn median_as_series(&self) -> Arc<dyn SeriesTrait> {
         let v = self.median();
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>
+        ca.into_series()
     }
     fn quantile_as_series(&self, quantile: f64) -> Result<Arc<dyn SeriesTrait>> {
         let v = self.quantile(quantile)?;
         let mut ca: ChunkedArray<T> = [v].iter().copied().collect();
         ca.rename(self.name());
-        Ok(Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
+        Ok(ca.into_series())
     }
 }
 

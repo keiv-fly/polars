@@ -195,10 +195,20 @@ where
 }
 
 pub(crate) trait HashJoin<T> {
-    fn hash_join_inner(&self, other: &ChunkedArray<T>) -> Vec<(usize, usize)>;
-    fn hash_join_left(&self, other: &ChunkedArray<T>) -> Vec<(usize, Option<usize>)>;
-    fn hash_join_outer(&self, other: &ChunkedArray<T>) -> Vec<(Option<usize>, Option<usize>)>;
+    fn hash_join_inner(&self, other: &ChunkedArray<T>) -> Vec<(usize, usize)> {
+        unimplemented!()
+    }
+    fn hash_join_left(&self, other: &ChunkedArray<T>) -> Vec<(usize, Option<usize>)> {
+        unimplemented!()
+    }
+    fn hash_join_outer(&self, other: &ChunkedArray<T>) -> Vec<(Option<usize>, Option<usize>)> {
+        unimplemented!()
+    }
 }
+
+impl HashJoin<Float64Type> for Float64Chunked {}
+impl HashJoin<Float32Type> for Float64Chunked {}
+impl HashJoin<ListType> for ListChunked {}
 
 macro_rules! det_hash_prone_order {
     ($self:expr, $other:expr) => {{
@@ -220,7 +230,7 @@ macro_rules! det_hash_prone_order {
 
 impl<T> HashJoin<T> for ChunkedArray<T>
 where
-    T: PolarsNumericType + Sync,
+    T: PolarsIntegerType + Sync,
     T::Native: Eq + Hash,
 {
     fn hash_join_inner(&self, other: &ChunkedArray<T>) -> Vec<(usize, usize)> {

@@ -28,7 +28,10 @@ mod upstream_traits;
 pub trait IntoSeries {
     fn into_series(self) -> Arc<dyn SeriesTrait>
     where
-        Self: Sized;
+        Self: Sized,
+    {
+        unimplemented!()
+    }
 }
 
 impl IntoSeries for Arc<dyn SeriesTrait> {
@@ -37,46 +40,24 @@ impl IntoSeries for Arc<dyn SeriesTrait> {
     }
 }
 
-impl IntoSeries for BooleanChunked {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
-    }
-}
-impl IntoSeries for Utf8Chunked {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
-    }
-}
-impl IntoSeries for Float32Chunked {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
-    }
-}
-impl IntoSeries for Float64Chunked {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
-    }
-}
-impl IntoSeries for ListChunked {
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
-    }
-}
-impl<T> IntoSeries for ChunkedArray<T>
-where
-    T: PolarsIntegerType,
-    T::Native: Hash + Eq + Display + Bounded + NumComp,
-{
-    fn into_series(self) -> Arc<dyn SeriesTrait> {
-        Arc::new(Wrap(self)) as Arc<dyn SeriesTrait>
-    }
-}
-
-impl Default for DataFrame {
-    fn default() -> Self {
-        DataFrame::new_no_checks(Vec::with_capacity(0))
-    }
-}
+impl IntoSeries for ListChunked {}
+impl IntoSeries for BooleanChunked {}
+impl IntoSeries for UInt8Chunked {}
+impl IntoSeries for UInt16Chunked {}
+impl IntoSeries for UInt32Chunked {}
+impl IntoSeries for UInt64Chunked {}
+impl IntoSeries for Int8Chunked {}
+impl IntoSeries for Int16Chunked {}
+impl IntoSeries for Int32Chunked {}
+impl IntoSeries for Int64Chunked {}
+impl IntoSeries for Float32Chunked {}
+impl IntoSeries for Float64Chunked {}
+impl IntoSeries for Utf8Chunked {}
+impl IntoSeries for Date32Chunked {}
+impl IntoSeries for Date64Chunked {}
+impl IntoSeries for DurationNanosecondChunked {}
+impl IntoSeries for DurationMillisecondChunked {}
+impl IntoSeries for Time64NanosecondChunked {}
 
 #[derive(Clone)]
 pub struct DataFrame {
@@ -1588,6 +1569,12 @@ impl<'a> Iterator for RecordBatchIter<'a> {
         let rb = RecordBatch::try_new(Arc::clone(&self.schema), rb_cols).unwrap();
         self.idx += length;
         Some(rb)
+    }
+}
+
+impl Default for DataFrame {
+    fn default() -> Self {
+        DataFrame::new_no_checks(vec![])
     }
 }
 

@@ -213,43 +213,6 @@ impl<'b> (dyn SeriesTrait + 'b) {
     }
 }
 
-impl Series {
-    fn as_groupable_iter<'a>(&'a self) -> Result<Box<dyn Iterator<Item = Option<Groupable>> + 'a>> {
-        macro_rules! as_groupable_iter {
-            ($ca:expr, $variant:ident ) => {{
-                let bx = Box::new($ca.into_iter().map(|opt_b| opt_b.map(Groupable::$variant)));
-                Ok(bx)
-            }};
-        }
-        match self {
-            Series::Bool(ca) => as_groupable_iter!(ca, Boolean),
-            Series::UInt8(ca) => as_groupable_iter!(ca, UInt8),
-            Series::UInt16(ca) => as_groupable_iter!(ca, UInt16),
-            Series::UInt32(ca) => as_groupable_iter!(ca, UInt32),
-            Series::UInt64(ca) => as_groupable_iter!(ca, UInt64),
-            Series::Int8(ca) => as_groupable_iter!(ca, Int8),
-            Series::Int16(ca) => as_groupable_iter!(ca, Int16),
-            Series::Int32(ca) => as_groupable_iter!(ca, Int32),
-            Series::Int64(ca) => as_groupable_iter!(ca, Int64),
-            Series::Date32(ca) => as_groupable_iter!(ca, Int32),
-            Series::Date64(ca) => as_groupable_iter!(ca, Int64),
-            Series::Time64Nanosecond(ca) => as_groupable_iter!(ca, Int64),
-            Series::DurationNanosecond(ca) => as_groupable_iter!(ca, Int64),
-            Series::DurationMillisecond(ca) => as_groupable_iter!(ca, Int64),
-            #[cfg(feature = "dtype-interval")]
-            Series::IntervalDayTime(ca) => as_groupable_iter!(ca, Int64),
-            #[cfg(feature = "dtype-interval")]
-            Series::IntervalYearMonth(ca) => as_groupable_iter!(ca, Int32),
-            Series::Utf8(ca) => as_groupable_iter!(ca, Utf8),
-            Series::Float32(ca) => Ok(float_to_groupable_iter(ca)),
-            Series::Float64(ca) => Ok(float_to_groupable_iter(ca)),
-            s => Err(PolarsError::Other(
-                format!("Column with dtype {:?} is not groupable", s.dtype()).into(),
-            )),
-        }
-    }
-}
-
 impl DataFrame {
     /// Group DataFrame using a Series column.
     ///

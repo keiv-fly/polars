@@ -64,6 +64,7 @@ where
         + ops::Rem<Output = T::Native>
         + num::Zero
         + num::One,
+    ChunkedArray<T>: IntoSeries,
 {
     fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
         let rhs = self.unpack_series_matching_type(rhs)?;
@@ -102,87 +103,43 @@ impl NumOpsDispatch for Utf8Chunked {
 impl NumOpsDispatch for BooleanChunked {}
 impl NumOpsDispatch for ListChunked {}
 
-impl ops::Sub for Series {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        (&self).sub(&rhs)
-    }
-}
-
-impl ops::Add for Series {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        (&self).add(&rhs)
-    }
-}
-
-impl std::ops::Mul for Series {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        (&self).mul(&rhs)
-    }
-}
-
-impl std::ops::Div for Series {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        (&self).div(&rhs)
-    }
-}
-
-impl std::ops::Rem for Series {
-    type Output = Self;
-
-    fn rem(self, rhs: Self) -> Self::Output {
-        (&self).rem(&rhs)
-    }
-}
-
-// Same only now for referenced data types
-
 pub(crate) fn coerce_lhs_rhs<'a>(
     lhs: &'a dyn SeriesTrait,
     rhs: &'a dyn SeriesTrait,
-) -> Result<(Cow<'a, Arc<dyn SeriesTrait>>, Cow<'a, Arc<dyn SeriesTrait>>)> {
+) -> Result<(Arc<dyn SeriesTrait>, Arc<dyn SeriesTrait>)> {
     let dtype = get_supertype(lhs.dtype(), rhs.dtype())?;
     let left = if lhs.dtype() == &dtype {
-        Cow::Borrowed(lhs)
+        lhs.clone()
     } else {
-        Cow::Owned(lhs.cast_with_arrow_datatype(&dtype)?)
+        lhs.cast_with_arrow_datatype(&dtype)?
     };
     let right = if rhs.dtype() == &dtype {
-        Cow::Borrowed(rhs)
+        rhs.clone()
     } else {
-        Cow::Owned(rhs.cast_with_arrow_datatype(&dtype)?)
+        rhs.cast_with_arrow_datatype(&dtype)?
     };
     Ok((left, right))
 }
 
-impl ops::Sub for &dyn SeriesTrait {
+impl<'a> ops::Sub for &(dyn SeriesTrait + 'a) {
     type Output = Arc<dyn SeriesTrait>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         let (lhs, rhs) = coerce_lhs_rhs(self, rhs).expect("cannot coerce datatypes");
-        apply_method_all_arrow_series!(lhs.as_ref(), subtract, rhs.as_ref())
-            .expect("data types don't match")
+        lhs.subtract(rhs.as_ref()).expect("data types don't match")
     }
 }
 
-impl ops::Add for &dyn SeriesTrait {
+impl<'a> ops::Add for &(dyn SeriesTrait + 'a) {
     type Output = Arc<dyn SeriesTrait>;
 
     fn add(self, rhs: Self) -> Self::Output {
         let (lhs, rhs) = coerce_lhs_rhs(self, rhs).expect("cannot coerce datatypes");
-        apply_method_all_arrow_series!(lhs.as_ref(), add_to, rhs.as_ref())
-            .expect("data types don't match")
+        lhs.add_to(rhs.as_ref()).expect("data types don't match")
     }
 }
 
-impl std::ops::Mul for &dyn SeriesTrait {
+impl<'a> std::ops::Mul for &(dyn SeriesTrait + 'a) {
     type Output = Arc<dyn SeriesTrait>;
 
     /// ```
@@ -192,12 +149,11 @@ impl std::ops::Mul for &dyn SeriesTrait {
     /// ```
     fn mul(self, rhs: Self) -> Self::Output {
         let (lhs, rhs) = coerce_lhs_rhs(self, rhs).expect("cannot coerce datatypes");
-        apply_method_all_arrow_series!(lhs.as_ref(), multiply, rhs.as_ref())
-            .expect("data types don't match")
+        lhs.multiply(rhs.as_ref()).expect("data types don't match")
     }
 }
 
-impl std::ops::Div for &dyn SeriesTrait {
+impl<'a> std::ops::Div for &(dyn SeriesTrait + 'a) {
     type Output = Arc<dyn SeriesTrait>;
 
     /// ```
@@ -207,12 +163,11 @@ impl std::ops::Div for &dyn SeriesTrait {
     /// ```
     fn div(self, rhs: Self) -> Self::Output {
         let (lhs, rhs) = coerce_lhs_rhs(self, rhs).expect("cannot coerce datatypes");
-        apply_method_all_arrow_series!(lhs.as_ref(), divide, rhs.as_ref())
-            .expect("data types don't match")
+        lhs.divide(rhs.as_ref()).expect("data types don't match")
     }
 }
 
-impl std::ops::Rem for &dyn SeriesTrait {
+impl<'a> std::ops::Rem for &(dyn SeriesTrait + 'a) {
     type Output = Arc<dyn SeriesTrait>;
 
     /// ```
@@ -222,8 +177,7 @@ impl std::ops::Rem for &dyn SeriesTrait {
     /// ```
     fn rem(self, rhs: Self) -> Self::Output {
         let (lhs, rhs) = coerce_lhs_rhs(self, rhs).expect("cannot coerce datatypes");
-        apply_method_all_arrow_series!(lhs.as_ref(), remainder, rhs.as_ref())
-            .expect("data types don't match")
+        lhs.remainder(rhs.as_ref()).expect("data types don't match")
     }
 }
 
@@ -258,6 +212,7 @@ where
         + ops::Sub<Output = T::Native>
         + ops::Mul<Output = T::Native>
         + ops::Div<Output = T::Native>,
+    ChunkedArray<T>: IntoSeries,
 {
     fn subtract_number<N: Num + NumCast>(&self, rhs: N) -> Arc<dyn SeriesTrait> {
         let rhs: T::Native =
@@ -309,7 +264,8 @@ where
     type Output = Series;
 
     fn sub(self, rhs: T) -> Self::Output {
-        apply_method_all_arrow_series!(self, subtract_number, rhs)
+        // apply_method_all_arrow_series!(self, subtract_number, rhs)
+        todo!()
     }
 }
 
@@ -320,7 +276,8 @@ where
     type Output = Series;
 
     fn add(self, rhs: T) -> Self::Output {
-        apply_method_all_arrow_series!(self, add_number, rhs)
+        // apply_method_all_arrow_series!(self, add_number, rhs)
+        todo!()
     }
 }
 
@@ -331,7 +288,8 @@ where
     type Output = Series;
 
     fn div(self, rhs: T) -> Self::Output {
-        apply_method_all_arrow_series!(self, divide_number, rhs)
+        // apply_method_all_arrow_series!(self, divide_number, rhs)
+        todo!()
     }
 }
 
@@ -342,7 +300,8 @@ where
     type Output = Series;
 
     fn mul(self, rhs: T) -> Self::Output {
-        apply_method_all_arrow_series!(self, multiply_number, rhs)
+        // apply_method_all_arrow_series!(self, multiply_number, rhs)
+        todo!()
     }
 }
 
@@ -350,16 +309,16 @@ where
 /// This allows for 1.add(&dyn SeriesTrait)
 
 pub(super) trait LhsNumOpsDispatch {
-    fn lhs_subtract_number<N: Num + NumCast>(&self, _lhs: N) -> Series {
+    fn lhs_subtract_number<N: Num + NumCast>(&self, _lhs: N) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
-    fn lhs_add_number<N: Num + NumCast>(&self, _lhs: N) -> Series {
+    fn lhs_add_number<N: Num + NumCast>(&self, _lhs: N) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
-    fn lhs_multiply_number<N: Num + NumCast>(&self, _lhs: N) -> Series {
+    fn lhs_multiply_number<N: Num + NumCast>(&self, _lhs: N) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
-    fn lhs_divide_number<N: Num + NumCast>(&self, _lhs: N) -> Series {
+    fn lhs_divide_number<N: Num + NumCast>(&self, _lhs: N) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
 }
@@ -378,8 +337,9 @@ where
         + ops::Sub<Output = T::Native>
         + ops::Mul<Output = T::Native>
         + ops::Div<Output = T::Native>,
+    ChunkedArray<T>: IntoSeries,
 {
-    fn lhs_subtract_number<N: Num + NumCast>(&self, lhs: N) -> Series {
+    fn lhs_subtract_number<N: Num + NumCast>(&self, lhs: N) -> Arc<dyn SeriesTrait> {
         let lhs: T::Native =
             NumCast::from(lhs).unwrap_or_else(|| panic!("could not cast".to_string()));
         let mut ca: ChunkedArray<T> = self
@@ -390,7 +350,7 @@ where
         ca.into_series()
     }
 
-    fn lhs_add_number<N: Num + NumCast>(&self, lhs: N) -> Series {
+    fn lhs_add_number<N: Num + NumCast>(&self, lhs: N) -> Arc<dyn SeriesTrait> {
         let lhs: T::Native =
             NumCast::from(lhs).unwrap_or_else(|| panic!("could not cast".to_string()));
         let mut ca: ChunkedArray<T> = self
@@ -400,7 +360,7 @@ where
         ca.rename(self.name());
         ca.into_series()
     }
-    fn lhs_multiply_number<N: Num + NumCast>(&self, lhs: N) -> Series {
+    fn lhs_multiply_number<N: Num + NumCast>(&self, lhs: N) -> Arc<dyn SeriesTrait> {
         let lhs: T::Native =
             NumCast::from(lhs).unwrap_or_else(|| panic!("could not cast".to_string()));
         let mut ca: ChunkedArray<T> = self
@@ -410,7 +370,7 @@ where
         ca.rename(self.name());
         ca.into_series()
     }
-    fn lhs_divide_number<N: Num + NumCast>(&self, lhs: N) -> Series {
+    fn lhs_divide_number<N: Num + NumCast>(&self, lhs: N) -> Arc<dyn SeriesTrait> {
         let lhs: T::Native =
             NumCast::from(lhs).unwrap_or_else(|| panic!("could not cast".to_string()));
         let mut ca: ChunkedArray<T> = self
@@ -435,19 +395,23 @@ impl<T> LhsNumOps for T
 where
     T: Num + NumCast,
 {
-    type Output = Series;
+    type Output = Arc<dyn SeriesTrait>;
 
     fn add(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        apply_method_all_arrow_series!(rhs, lhs_add_number, self)
+        // apply_method_all_arrow_series!(rhs, lhs_add_number, self)
+        todo!()
     }
     fn sub(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        apply_method_all_arrow_series!(rhs, lhs_subtract_number, self)
+        // apply_method_all_arrow_series!(rhs, lhs_subtract_number, self)
+        todo!()
     }
     fn div(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        apply_method_all_arrow_series!(rhs, lhs_divide_number, self)
+        // apply_method_all_arrow_series!(rhs, lhs_divide_number, self)
+        todo!()
     }
     fn mul(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        apply_method_all_arrow_series!(rhs, lhs_multiply_number, self)
+        // apply_method_all_arrow_series!(rhs, lhs_multiply_number, self)
+        todo!()
     }
 }
 

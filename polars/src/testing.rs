@@ -42,7 +42,7 @@ impl DataFrame {
             return false;
         }
         for (left, right) in self.get_columns().iter().zip(other.get_columns()) {
-            if !left.series_equal(right) {
+            if !left.series_equal(&**right) {
                 return false;
             }
         }
@@ -55,7 +55,7 @@ impl DataFrame {
             return false;
         }
         for (left, right) in self.get_columns().iter().zip(other.get_columns()) {
-            if !left.series_equal_missing(right) {
+            if !left.series_equal_missing(&**right) {
                 return false;
             }
         }

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::series::implementations::Wrap;
 use crate::utils::Xob;
 use std::iter::FromIterator;
 
@@ -39,31 +40,24 @@ from_iterator!(f32, Float32);
 from_iterator!(f64, Float64);
 from_iterator!(bool, Bool);
 
-impl<'a> FromIterator<&'a str> for Series {
+impl<'a> FromIterator<&'a str> for Wrap<Arc<dyn SeriesTrait>> {
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> Self {
-        let ca = iter.into_iter().collect();
-        Series::Utf8(ca)
+        let ca: Utf8Chunked = iter.into_iter().collect();
+        Wrap(ca.into_series())
     }
 }
 
-impl<'a> FromIterator<&'a Series> for Series {
-    fn from_iter<I: IntoIterator<Item = &'a Series>>(iter: I) -> Self {
-        let ca = iter.into_iter().collect();
-        Series::List(ca)
+impl<'a> FromIterator<&'a dyn SeriesTrait> for Wrap<Arc<dyn SeriesTrait>> {
+    fn from_iter<I: IntoIterator<Item = &'a SeriesTrait>>(iter: I) -> Self {
+        let ca: ListChunked = iter.into_iter().collect();
+        Wrap(ca.into_series())
     }
 }
 
-impl FromIterator<Series> for Series {
-    fn from_iter<I: IntoIterator<Item = Series>>(iter: I) -> Self {
-        let ca = iter.into_iter().collect();
-        Series::List(ca)
-    }
-}
-
-impl FromIterator<Option<Series>> for Series {
-    fn from_iter<I: IntoIterator<Item = Option<Series>>>(iter: I) -> Self {
-        let ca = iter.into_iter().collect();
-        Series::List(ca)
+impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for Wrap<Arc<dyn SeriesTrait>> {
+    fn from_iter<I: IntoIterator<Item = Option<&'a dyn SeriesTrait>>>(iter: I) -> Self {
+        let ca: ListChunked = iter.into_iter().collect();
+        Wrap(ca.into_series())
     }
 }
 
