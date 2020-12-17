@@ -173,7 +173,7 @@ where
     }
 }
 
-impl Debug for dyn SeriesTrait {
+impl<'a> Debug for (dyn SeriesTrait + 'a) {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Ok(())
     }

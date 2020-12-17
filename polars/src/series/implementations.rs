@@ -4,7 +4,7 @@ use crate::chunked_array::ops::aggregate::{ChunkAggSeries, VarAggSeries};
 use crate::datatypes::ArrowDataType;
 use crate::fmt::FmtList;
 use crate::frame::group_by::PivotAgg;
-use crate::prelude::*;
+use crate::frame::hash_join::HashJoin;
 use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
@@ -32,7 +32,7 @@ where
     }
 }
 
-impl<T> private::Agg for Wrap<ChunkedArray<T>>
+impl<T> private::PrivateSeries for Wrap<ChunkedArray<T>>
 where
     T: 'static + PolarsDataType + Send + Sync,
 {
@@ -97,6 +97,15 @@ where
         groups: &[(usize, Vec<usize>)],
     ) -> Result<DataFrame> {
         unimplemented!()
+    }
+    fn hash_join_inner(&self, other: &dyn SeriesTrait) -> Vec<(usize, usize)> {
+        HashJoin::hash_join_inner(self, other.as_ref())
+    }
+    fn hash_join_left(&self, other: &dyn SeriesTrait) -> Vec<(usize, Option<usize>)> {
+        HashJoin::hash_join_left(self, other.as_ref())
+    }
+    fn hash_join_outer(&self, other: &dyn SeriesTrait) -> Vec<(Option<usize>, Option<usize>)> {
+        HashJoin::hash_join_outer(self, other.as_ref())
     }
 }
 

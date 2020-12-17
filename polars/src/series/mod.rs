@@ -23,7 +23,7 @@ pub(crate) mod private {
     use super::*;
     use crate::frame::group_by::PivotAgg;
 
-    pub(crate) trait Agg {
+    pub(crate) trait PrivateSeries {
         fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
         fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
         fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
@@ -52,10 +52,14 @@ pub(crate) mod private {
             keys: Vec<Arc<dyn SeriesTrait>>,
             groups: &[(usize, Vec<usize>)],
         ) -> Result<DataFrame>;
+
+        fn hash_join_inner(&self, other: &dyn SeriesTrait) -> Vec<(usize, usize)>;
+        fn hash_join_left(&self, other: &dyn SeriesTrait) -> Vec<(usize, Option<usize>)>;
+        fn hash_join_outer(&self, other: &dyn SeriesTrait) -> Vec<(Option<usize>, Option<usize>)>;
     }
 }
 
-pub trait SeriesTrait: Send + Sync + private::Agg {
+pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     fn group_tuples(&self) -> Vec<(usize, Vec<usize>)>;
     /// Get Arrow ArrayData
     fn array_data(&self) -> Vec<ArrayDataRef> {

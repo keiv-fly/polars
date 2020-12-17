@@ -194,7 +194,7 @@ where
     results
 }
 
-pub trait HashJoin<T> {
+pub(crate) trait HashJoin<T> {
     fn hash_join_inner(&self, other: &ChunkedArray<T>) -> Vec<(usize, usize)>;
     fn hash_join_left(&self, other: &ChunkedArray<T>) -> Vec<(usize, Option<usize>)>;
     fn hash_join_outer(&self, other: &ChunkedArray<T>) -> Vec<(Option<usize>, Option<usize>)>;
@@ -362,6 +362,7 @@ pub trait ZipOuterJoinColumn {
 impl<T> ZipOuterJoinColumn for ChunkedArray<T>
 where
     T: PolarsIntegerType,
+    ChunkedArray<T>: IntoSeries,
 {
     fn zip_outer_join_column(
         &self,
@@ -482,16 +483,16 @@ impl DataFrame {
     ) -> Result<DataFrame> {
         let s_left = self.column(left_on)?;
         let s_right = other.column(right_on)?;
-        self.inner_join_from_series(other, s_left, s_right)
+        self.inner_join_from_series(other, &**s_left, &**s_right)
     }
 
     pub(crate) fn inner_join_from_series(
         &self,
         other: &DataFrame,
-        s_left: &Series,
-        s_right: &Series,
+        s_left: &dyn SeriesTrait,
+        s_right: &dyn SeriesTrait,
     ) -> Result<DataFrame> {
-        let join_tuples = apply_hash_join_on_series!(s_left, s_right, hash_join_inner);
+        let join_tuples = s_left.hash_join_inner(s_right);
 
         let (df_left, df_right) = rayon::join(
             || self.create_left_df(&join_tuples),
@@ -520,16 +521,16 @@ impl DataFrame {
     pub fn left_join(&self, other: &DataFrame, left_on: &str, right_on: &str) -> Result<DataFrame> {
         let s_left = self.column(left_on)?;
         let s_right = other.column(right_on)?;
-        self.left_join_from_series(other, s_left, s_right)
+        self.left_join_from_series(other, &**s_left, &**s_right)
     }
 
     pub(crate) fn left_join_from_series(
         &self,
         other: &DataFrame,
-        s_left: &Series,
-        s_right: &Series,
+        s_left: &dyn SeriesTrait,
+        s_right: &dyn SeriesTrait,
     ) -> Result<DataFrame> {
-        let opt_join_tuples = apply_hash_join_on_series!(s_left, s_right, hash_join_left);
+        let opt_join_tuples = s_left.hash_join_left(s_right);
 
         let (df_left, df_right) = rayon::join(
             || self.create_left_df(&opt_join_tuples),
@@ -563,17 +564,16 @@ impl DataFrame {
     ) -> Result<DataFrame> {
         let s_left = self.column(left_on)?;
         let s_right = other.column(right_on)?;
-        self.outer_join_from_series(other, s_left, s_right)
+        self.outer_join_from_series(other, &**s_left, &**s_right)
     }
     pub(crate) fn outer_join_from_series(
         &self,
         other: &DataFrame,
-        s_left: &Series,
-        s_right: &Series,
+        s_left: &dyn SeriesTrait,
+        s_right: &dyn SeriesTrait,
     ) -> Result<DataFrame> {
         // Get the indexes of the joined relations
-        let opt_join_tuples: Vec<(Option<usize>, Option<usize>)> =
-            apply_hash_join_on_series!(s_left, s_right, hash_join_outer);
+        let opt_join_tuples = s_left.hash_join_outer(s_right);
 
         // Take the left and right dataframes by join tuples
         let (mut df_left, df_right) = rayon::join(
