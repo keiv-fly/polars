@@ -19,7 +19,24 @@ use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
 use std::sync::Arc;
 
-pub trait SeriesTrait: Send + Sync {
+pub(crate) mod private {
+    use super::*;
+
+    pub(crate) trait Agg {
+        fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
+        fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait>;
+        fn agg_n_unique(&self, groups: &[(usize, Vec<usize>)]) -> Option<UInt32Chunked>;
+        fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>>;
+        fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>>;
+    }
+}
+
+pub trait SeriesTrait: Send + Sync + private::Agg {
     fn group_tuples(&self) -> Vec<(usize, Vec<usize>)>;
     /// Get Arrow ArrayData
     fn array_data(&self) -> Vec<ArrayDataRef> {
@@ -561,9 +578,9 @@ pub trait SeriesTrait: Send + Sync {
         unimplemented!()
     }
 
-    // fn fmt_list(&self) -> String {
-    //     unimplemented!()
-    // }
+    fn fmt_list(&self) -> String {
+        "fmt implemented".into()
+    }
 
     #[cfg(feature = "temporal")]
     #[doc(cfg(feature = "temporal"))]
@@ -635,6 +652,23 @@ pub trait SeriesTrait: Send + Sync {
         unimplemented!()
     }
     fn clone(&self) -> Arc<dyn SeriesTrait>;
+}
+
+impl dyn SeriesTrait {
+
+    pub fn unpack<N>(&self) -> Result<&ChunkedArray<N>>
+        where
+            N: PolarsDataType,
+    {
+
+        if N::get_data_type() == self.dtype() {
+            Ok(self.as_ref())
+        } else {
+            Err(PolarsError::DataTypeMisMatch(
+                "cannot unpack Series; data types don't match".into(),
+            ))
+        }
+    }
 }
 
 /// # Series

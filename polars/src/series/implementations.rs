@@ -7,6 +7,8 @@ use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
 use regex::internal::Input;
 use std::sync::Arc;
+use crate::fmt::FmtList;
+use super::private;
 
 pub(crate) struct Wrap<T>(pub T);
 
@@ -29,6 +31,51 @@ where
     }
 }
 
+impl<T> private::Agg for Wrap<ChunkedArray<T>>
+    where
+        T: 'static + PolarsDataType + Send + Sync,
+{
+    fn agg_mean(&self, _groups: &[(usize, Vec<usize >)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn agg_min(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn agg_max(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn agg_sum(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+        unimplemented!()
+    }
+
+    fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Arc<dyn SeriesTrait> {
+        unimplemented!()
+    }
+
+    fn agg_n_unique(&self, groups: &[(usize, Vec<usize>)]) -> Option<UInt32Chunked> {
+        unimplemented!()
+    }
+
+    fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+
+    fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
+        unimplemented!()
+    }
+}
+
 impl<T> SeriesTrait for Wrap<ChunkedArray<T>>
 where
     T: 'static + PolarsDataType + Send + Sync,
@@ -46,7 +93,9 @@ where
         + ChunkCast
         + ChunkWindow
         + ChunkAggSeries
-        + VarAggSeries,
+        + VarAggSeries
+        + FmtList
+,
 {
     fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
         self.group_tuples()
@@ -898,9 +947,9 @@ where
             .map(|ca| Arc::new(ca) as Arc<dyn SeriesTrait>)
     }
 
-    // fn fmt_list(&self) -> String {
-    //     unimplemented!()
-    // }
+    fn fmt_list(&self) -> String {
+        FmtList::fmt_list(self)
+    }
 
     #[cfg(feature = "temporal")]
     #[doc(cfg(feature = "temporal"))]

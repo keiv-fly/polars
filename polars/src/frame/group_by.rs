@@ -683,7 +683,7 @@ impl AggNUnique for Utf8Chunked {
 }
 
 pub(crate) trait AggList {
-    fn agg_list(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_list(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
 }
@@ -692,7 +692,7 @@ where
     T: PolarsDataType,
     ChunkedArray<T>: IntoSeries,
 {
-    fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         macro_rules! impl_gb {
             ($type:ty, $agg_col:expr) => {{
                 let values_builder = PrimitiveBuilder::<$type>::new(groups.len());
@@ -702,7 +702,7 @@ where
                     let s = unsafe {
                         $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_opt_series(Some(&s))
+                    builder.append_opt_series(Some(s.as_ref()))
                 }
                 builder.finish().into_series()
             }};
@@ -716,7 +716,7 @@ where
                     let s = unsafe {
                         $agg_col.take_iter_unchecked(&mut idx.into_iter().copied(), Some(idx.len()))
                     };
-                    builder.append_series(&s)
+                    builder.append_series(s.as_ref())
                 }
                 builder.finish().into_series()
             }};
@@ -733,11 +733,11 @@ where
 }
 
 pub(crate) trait AggQuantile {
-    fn agg_quantile(&self, _groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Series> {
+    fn agg_quantile(&self, _groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Arc<dyn SeriesTrait>> {
         None
     }
 
-    fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+    fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Arc<dyn SeriesTrait>> {
         self.agg_quantile(groups, 0.5)
     }
 }
@@ -746,8 +746,9 @@ impl<T> AggQuantile for ChunkedArray<T>
 where
     T: PolarsNumericType + Sync,
     T::Native: PartialEq,
+    ChunkedArray<T>: IntoSeries
 {
-    fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], quantile: f64) -> Option<Series> {
+    fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], quantile: f64) -> Option<Arc<dyn SeriesTrait>> {
         Some(
             groups
                 .into_par_iter()
@@ -792,7 +793,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         &self.groups
     }
 
-    pub(crate) fn keys(&self) -> Vec<Series> {
+    pub(crate) fn keys(&self) -> Vec<Arc<dyn SeriesTrait>> {
         // Keys will later be appended with the aggregation columns, so we already allocate extra space
         let size;
         if let Some(sel) = &self.selected_agg {
@@ -804,7 +805,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         unsafe {
             self.selected_keys.iter().for_each(|s| {
                 let key = s.take_iter_unchecked(
-                    self.groups.iter().map(|(idx, _)| *idx),
+                    &mut self.groups.iter().map(|(idx, _)| *idx),
                     Some(self.groups.len()),
                 );
                 keys.push(key)
@@ -813,7 +814,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         keys
     }
 
-    fn prepare_agg(&self) -> Result<(Vec<Series>, Vec<Series>)> {
+    fn prepare_agg(&self) -> Result<(Vec<Arc<dyn SeriesTrait>>, Vec<Arc<dyn SeriesTrait>>)> {
         let selection = match &self.selected_agg {
             Some(selection) => selection.clone(),
             None => {
@@ -861,7 +862,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
 
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Mean);
-            let opt_agg = apply_method_all_arrow_series!(agg_col, agg_mean, &self.groups);
+            let opt_agg = agg_col.agg_mean(&self.groups);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg);
@@ -900,7 +901,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
 
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Sum);
-            let opt_agg = apply_method_all_arrow_series!(agg_col, agg_sum, &self.groups);
+            let opt_agg = agg_col.agg_sum(&self.groups);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg);
@@ -938,7 +939,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Min);
-            let opt_agg = apply_method_all_arrow_series!(agg_col, agg_min, &self.groups);
+            let opt_agg = agg_col.agg_min(&self.groups);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg);
@@ -976,7 +977,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Max);
-            let opt_agg = apply_method_all_arrow_series!(agg_col, agg_max, &self.groups);
+            let opt_agg = agg_col.agg_max(&self.groups);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg);
@@ -1014,7 +1015,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::First);
-            let mut agg = apply_method_all_series!(agg_col, agg_first, &self.groups);
+            let mut agg = agg_col.agg_first(&self.groups);
             agg.rename(&new_name);
             cols.push(agg);
         }
@@ -1050,7 +1051,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Last);
-            let mut agg = apply_method_all_arrow_series!(agg_col, agg_last, &self.groups);
+            let mut agg = agg_col.agg_last(&self.groups);
             agg.rename(&new_name);
             cols.push(agg);
         }
@@ -1086,7 +1087,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::NUnique);
-            let opt_agg = apply_method_all_series!(agg_col, agg_n_unique, &self.groups);
+            let opt_agg = agg_col.agg_n_unique(&self.groups);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg.into_series());
@@ -1114,8 +1115,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Quantile(quantile));
-            let opt_agg =
-                apply_method_all_arrow_series!(agg_col, agg_quantile, &self.groups, quantile);
+            let opt_agg = agg_col.agg_quantile(&self.groups, quantile);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg.into_series());
@@ -1138,7 +1138,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
         let (mut cols, agg_cols) = self.prepare_agg()?;
         for agg_col in agg_cols {
             let new_name = fmt_groupby_column(agg_col.name(), GroupByMethod::Median);
-            let opt_agg = apply_method_all_arrow_series!(agg_col, agg_median, &self.groups);
+            let opt_agg = agg_col.agg_median(&self.groups);
             if let Some(mut agg) = opt_agg {
                 agg.rename(&new_name);
                 cols.push(agg.into_series());
@@ -1181,8 +1181,7 @@ impl<'df, 'selection_str> GroupBy<'df, 'selection_str> {
                 builder.append_value(idx.len() as u32);
             }
             let ca = builder.finish();
-            let agg = Series::UInt32(ca);
-            cols.push(agg);
+            cols.push(ca.into_series())
         }
         DataFrame::new(cols)
     }
