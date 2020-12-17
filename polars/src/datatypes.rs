@@ -7,7 +7,7 @@
 //! are currently supported.
 //!
 use crate::chunked_array::ChunkedArray;
-use crate::series::Series;
+use crate::series::{Series, SeriesTrait};
 pub use arrow::datatypes::DataType as ArrowDataType;
 pub use arrow::datatypes::{
     ArrowNumericType, ArrowPrimitiveType, BooleanType, Date32Type, Date64Type, DateUnit,
@@ -18,6 +18,7 @@ pub use arrow::datatypes::{
     TimestampMillisecondType, TimestampNanosecondType, TimestampSecondType, UInt16Type, UInt32Type,
     UInt64Type, UInt8Type,
 };
+use std::sync::Arc;
 
 pub struct Utf8Type {}
 
@@ -198,7 +199,7 @@ pub enum AnyType<'a> {
     IntervalDayTime(i64),
     #[cfg(feature = "dtype-interval")]
     IntervalYearMonth(i32),
-    List(Series),
+    List(Arc<dyn SeriesTrait>),
     /// Use as_any to get a dyn Any
     Object(&'a str),
 }

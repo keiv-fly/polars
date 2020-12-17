@@ -535,17 +535,17 @@ macro_rules! impl_cmp_list {
             (0, 0) => $self
                 .into_no_null_iter()
                 .zip($rhs.into_no_null_iter())
-                .map(|(left, right)| left.$cmp_method(&right))
+                .map(|(left, right)| left.$cmp_method(right.as_ref()))
                 .collect(),
             (0, _) => $self
                 .into_no_null_iter()
                 .zip($rhs.into_iter())
-                .map(|(left, opt_right)| opt_right.map(|right| left.$cmp_method(&right)))
+                .map(|(left, opt_right)| opt_right.map(|right| left.$cmp_method(right.as_ref())))
                 .collect(),
             (_, 0) => $self
                 .into_iter()
                 .zip($rhs.into_no_null_iter())
-                .map(|(opt_left, right)| opt_left.map(|left| left.$cmp_method(&right)))
+                .map(|(opt_left, right)| opt_left.map(|left| left.$cmp_method(right.as_ref())))
                 .collect(),
             (_, _) => $self
                 .into_iter()
@@ -554,7 +554,7 @@ macro_rules! impl_cmp_list {
                     (None, None) => None,
                     (None, Some(_)) => None,
                     (Some(_), None) => None,
-                    (Some(left), Some(right)) => Some(left.$cmp_method(&right)),
+                    (Some(left), Some(right)) => Some(left.$cmp_method(right.as_ref())),
                 })
                 .collect(),
         }

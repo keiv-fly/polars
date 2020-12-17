@@ -49,6 +49,7 @@ use arrow::array::{
 #[cfg(feature = "dtype-interval")]
 use arrow::array::{IntervalDayTimeArray, IntervalYearMonthArray};
 
+use crate::series::implementations::Wrap;
 use arrow::util::bit_util::{get_bit, round_upto_power_of_2};
 use std::fmt::Debug;
 use std::mem;
@@ -554,7 +555,8 @@ where
             }
             ArrowDataType::List(_) => {
                 let v = downcast!(ListArray);
-                AnyType::List(("", v).into())
+                let s: Wrap<_> = ("", v).into();
+                AnyType::List(s.0)
             }
             ArrowDataType::Binary => AnyType::Object(&"object"),
             _ => unimplemented!(),

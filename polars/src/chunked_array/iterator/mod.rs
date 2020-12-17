@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::series::implementations::Wrap;
 use arrow::array::{
     Array, ArrayDataRef, ArrayRef, BooleanArray, ListArray, PrimitiveArray, PrimitiveArrayOps,
     StringArray,
@@ -1253,8 +1254,9 @@ impl_all_iterators!(
 );
 
 // used for macro
-fn return_from_list_iter(method_name: &str, v: ArrayRef) -> Series {
-    (method_name, v).into()
+fn return_from_list_iter(method_name: &str, v: ArrayRef) -> Arc<dyn SeriesTrait> {
+    let s: Wrap<_> = (method_name, v).into();
+    s.0
 }
 
 impl_all_iterators!(
@@ -1264,7 +1266,7 @@ impl_all_iterators!(
     ListIterSingleChunkNullCheck,
     ListIterManyChunk,
     ListIterManyChunkNullCheck,
-    Series,
+    Arc<dyn SeriesTrait>,
     return_from_list_iter
 );
 

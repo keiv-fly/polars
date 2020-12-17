@@ -15,6 +15,7 @@ use self::ops::SeriesOps;
 use crate::chunked_array::builder::get_list_builder;
 use crate::fmt::FmtList;
 use crate::frame::group_by::IntoGroupTuples;
+use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
 use std::sync::Arc;
 
@@ -1866,7 +1867,7 @@ from_series_to_ca!(IntervalYearMonth, IntervalYearMonthChunked);
 from_series_to_ca!(List, ListChunked);
 
 // TODO: add types
-impl From<(&str, ArrayRef)> for Series {
+impl From<(&str, ArrayRef)> for Wrap<Arc<dyn SeriesTrait>> {
     fn from(name_arr: (&str, ArrayRef)) -> Self {
         let (name, arr) = name_arr;
         let chunk = vec![arr];

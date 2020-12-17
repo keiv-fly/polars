@@ -1,9 +1,9 @@
 //! Testing utilities.
 use crate::prelude::*;
 
-impl Series {
+impl dyn SeriesTrait {
     /// Check if series are equal. Note that `None == None` evaluates to `false`
-    pub fn series_equal(&self, other: &Series) -> bool {
+    pub fn series_equal(&self, other: &dyn SeriesTrait) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -17,7 +17,7 @@ impl Series {
     }
 
     /// Check if all values in series are equal where `None == None` evaluates to `true`.
-    pub fn series_equal_missing(&self, other: &Series) -> bool {
+    pub fn series_equal_missing(&self, other: &dyn SeriesTrait) -> bool {
         if self.len() != other.len() {
             return false;
         }

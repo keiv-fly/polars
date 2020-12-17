@@ -721,8 +721,8 @@ impl<'a> ChunkFull<&'a str> for Utf8Chunked {
     }
 }
 
-impl ChunkFull<Series> for ListChunked {
-    fn full(_name: &str, _value: Series, _length: usize) -> ListChunked {
+impl ChunkFull<&dyn SeriesTrait> for ListChunked {
+    fn full(_name: &str, _value: &dyn SeriesTrait, _length: usize) -> ListChunked {
         unimplemented!()
     }
 
@@ -823,8 +823,8 @@ impl ChunkExpandAtIndex<Utf8Type> for Utf8Chunked {
 }
 
 impl ChunkExpandAtIndex<ListType> for ListChunked {
-    fn expand_at_index(&self, index: usize, length: usize) -> ListChunked {
-        impl_chunk_expand!(self, length, index)
+    fn expand_at_index(&self, _index: usize, _length: usize) -> ListChunked {
+        unimplemented!()
     }
 }
 

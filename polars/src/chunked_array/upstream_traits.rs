@@ -190,8 +190,8 @@ impl FromIterator<Option<String>> for Utf8Chunked {
     }
 }
 
-impl FromIterator<Series> for ListChunked {
-    fn from_iter<I: IntoIterator<Item = Series>>(iter: I) -> Self {
+impl FromIterator<Arc<dyn SeriesTrait>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Arc<dyn SeriesTrait>>>(iter: I) -> Self {
         let mut it = iter.into_iter();
         let capacity = get_iter_capacity(&it);
 
@@ -199,16 +199,16 @@ impl FromIterator<Series> for ListChunked {
         let v = it.next().unwrap();
         let mut builder = get_list_builder(v.dtype(), capacity, "collected");
 
-        builder.append_opt_series(Some(&v));
+        builder.append_opt_series(Some(v.as_ref()));
         for s in it {
-            builder.append_opt_series(Some(&s));
+            builder.append_opt_series(Some(s.as_ref()));
         }
         builder.finish()
     }
 }
 
-impl<'a> FromIterator<&'a Series> for ListChunked {
-    fn from_iter<I: IntoIterator<Item = &'a Series>>(iter: I) -> Self {
+impl<'a> FromIterator<&'a dyn SeriesTrait> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = &'a dyn SeriesTrait>>(iter: I) -> Self {
         let mut it = iter.into_iter();
         let capacity = get_iter_capacity(&it);
 
@@ -264,11 +264,11 @@ macro_rules! impl_from_iter_opt_series {
         }
 
         // now the first non None
-        builder.append_series(&v);
+        builder.append_series(&*v);
 
         // now we have added all Nones, we can consume the rest of the iterator.
         for opt_s in it {
-            builder.append_opt_series(opt_s.as_ref());
+            builder.append_opt_series(opt_s.as_ref().map(|s| &**s));
         }
 
         builder.finish()
@@ -276,14 +276,14 @@ macro_rules! impl_from_iter_opt_series {
     }}
 }
 
-impl FromIterator<Option<Series>> for ListChunked {
-    fn from_iter<I: IntoIterator<Item = Option<Series>>>(iter: I) -> Self {
+impl FromIterator<Option<Arc<dyn SeriesTrait>>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Option<Arc<dyn SeriesTrait>>>>(iter: I) -> Self {
         impl_from_iter_opt_series!(iter)
     }
 }
 
-impl<'a> FromIterator<&'a Option<Series>> for ListChunked {
-    fn from_iter<I: IntoIterator<Item = &'a Option<Series>>>(iter: I) -> Self {
+impl<'a> FromIterator<Option<&'a dyn SeriesTrait>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Option<&'a dyn SeriesTrait>>>(iter: I) -> Self {
         impl_from_iter_opt_series!(iter)
     }
 }
