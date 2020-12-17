@@ -190,8 +190,8 @@ impl FromIterator<Option<String>> for Utf8Chunked {
     }
 }
 
-impl FromIterator<Arc<dyn SeriesTrait>> for ListChunked {
-    fn from_iter<I: IntoIterator<Item = Arc<dyn SeriesTrait>>>(iter: I) -> Self {
+impl<'a> FromIterator<&'a Series> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = &'a Series>>(iter: I) -> Self {
         let mut it = iter.into_iter();
         let capacity = get_iter_capacity(&it);
 
@@ -199,9 +199,9 @@ impl FromIterator<Arc<dyn SeriesTrait>> for ListChunked {
         let v = it.next().unwrap();
         let mut builder = get_list_builder(v.dtype(), capacity, "collected");
 
-        builder.append_opt_series(Some(&Series(v)));
+        builder.append_opt_series(Some(v));
         for s in it {
-            builder.append_opt_series(Some(&Series(s)));
+            builder.append_opt_series(Some(s));
         }
         builder.finish()
     }
@@ -288,18 +288,56 @@ impl FromIterator<Option<Series>> for ListChunked {
     }
 }
 
-// impl<'a> FromIterator<Option<&'a Series>> for ListChunked {
-//     fn from_iter<I: IntoIterator<Item = Option<&'a Series>>>(iter: I) -> Self {
-//         impl_from_iter_opt_series!(iter.into_iter())
-//     }
-// }
+impl<'a> FromIterator<Option<&'a Series>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = Option<&'a Series>>>(iter: I) -> Self {
+        let mut it = iter.into_iter();
+        let v;
+        let mut cnt = 0;
 
-// impl<'a> FromIterator<&'a Option<Series>> for ListChunked {
-//     fn from_iter<I: IntoIterator<Item = &'a Option< Series>>>(iter: I) -> Self {
-//         let iter = iter.into_iter().map(|opt_s| opt_s.map(|s| s.as_ref()));
-//         impl_from_iter_opt_series!(iter)
-//     }
-// }
+        loop {
+            let opt_v = it.next();
+
+            match opt_v {
+                Some(opt_v) => match opt_v {
+                    Some(val) => {
+                        v = val;
+                        break;
+                    }
+                    None => cnt += 1,
+                },
+                // end of iterator
+                None => {
+                    // type is not known
+                    panic!("Type of Series cannot be determined as they are all null")
+                }
+            }
+        }
+        let capacity = get_iter_capacity(&it);
+        let mut builder = get_list_builder(v.dtype(), capacity, "collected");
+
+        // first fill all None's we encountered
+        while cnt > 0 {
+            builder.append_opt_series(None);
+            cnt -= 1;
+        }
+
+        // now the first non None
+        builder.append_series(&v);
+
+        // now we have added all Nones, we can consume the rest of the iterator.
+        for opt_s in it {
+            builder.append_opt_series(opt_s);
+        }
+
+        builder.finish()
+    }
+}
+
+impl<'a> FromIterator<&'a Option<Series>> for ListChunked {
+    fn from_iter<I: IntoIterator<Item = &'a Option<Series>>>(iter: I) -> Self {
+        iter.into_iter().map(|s| s.as_ref()).collect()
+    }
+}
 
 /// FromParallelIterator trait
 

@@ -111,80 +111,80 @@ where
     }
 
     fn eq(&self, rhs: Rhs) -> BooleanChunked {
-        // apply_method_numeric_series!(self, eq, rhs)
-        todo!()
+        apply_method_numeric_series!(self, eq, rhs)
     }
 
     fn neq(&self, rhs: Rhs) -> BooleanChunked {
-        // apply_method_numeric_series!(self, neq, rhs)
-        todo!()
+        apply_method_numeric_series!(self, neq, rhs)
     }
 
     fn gt(&self, rhs: Rhs) -> BooleanChunked {
-        // apply_method_numeric_series!(self, gt, rhs)
-        todo!()
+        apply_method_numeric_series!(self, gt, rhs)
     }
 
     fn gt_eq(&self, rhs: Rhs) -> BooleanChunked {
-        // apply_method_numeric_series!(self, gt_eq, rhs)
-        todo!()
+        apply_method_numeric_series!(self, gt_eq, rhs)
     }
 
     fn lt(&self, rhs: Rhs) -> BooleanChunked {
-        // apply_method_numeric_series!(self, lt, rhs)
-        todo!()
+        apply_method_numeric_series!(self, lt, rhs)
     }
 
     fn lt_eq(&self, rhs: Rhs) -> BooleanChunked {
-        // apply_method_numeric_series!(self, lt_eq, rhs)
-        todo!()
+        apply_method_numeric_series!(self, lt_eq, rhs)
     }
 }
 
-// impl ChunkCompare<&str> for Series {
-//     fn eq_missing(&self, rhs: &str) -> BooleanChunked {
-//         self.eq(rhs)
-//     }
-//
-//     fn eq(&self, rhs: &str) -> BooleanChunked {
-//         match self {
-//             Series::Utf8(a) => a.eq(rhs),
-//             _ => std::iter::repeat(false).take(self.len()).collect(),
-//         }
-//     }
-//
-//     fn neq(&self, rhs: &str) -> BooleanChunked {
-//         match self {
-//             Series::Utf8(a) => a.neq(rhs),
-//             _ => std::iter::repeat(false).take(self.len()).collect(),
-//         }
-//     }
-//
-//     fn gt(&self, rhs: &str) -> BooleanChunked {
-//         match self {
-//             Series::Utf8(a) => a.gt(rhs),
-//             _ => std::iter::repeat(false).take(self.len()).collect(),
-//         }
-//     }
-//
-//     fn gt_eq(&self, rhs: &str) -> BooleanChunked {
-//         match self {
-//             Series::Utf8(a) => a.gt_eq(rhs),
-//             _ => std::iter::repeat(false).take(self.len()).collect(),
-//         }
-//     }
-//
-//     fn lt(&self, rhs: &str) -> BooleanChunked {
-//         match self {
-//             Series::Utf8(a) => a.lt(rhs),
-//             _ => std::iter::repeat(false).take(self.len()).collect(),
-//         }
-//     }
-//
-//     fn lt_eq(&self, rhs: &str) -> BooleanChunked {
-//         match self {
-//             Series::Utf8(a) => a.lt_eq(rhs),
-//             _ => std::iter::repeat(false).take(self.len()).collect(),
-//         }
-//     }
-// }
+impl ChunkCompare<&str> for Series {
+    fn eq_missing(&self, rhs: &str) -> BooleanChunked {
+        self.eq(rhs)
+    }
+
+    fn eq(&self, rhs: &str) -> BooleanChunked {
+        if let Ok(a) = self.utf8() {
+            a.eq(rhs)
+        } else {
+            std::iter::repeat(false).take(self.len()).collect()
+        }
+    }
+
+    fn neq(&self, rhs: &str) -> BooleanChunked {
+        if let Ok(a) = self.utf8() {
+            a.neq(rhs)
+        } else {
+            std::iter::repeat(false).take(self.len()).collect()
+        }
+    }
+
+    fn gt(&self, rhs: &str) -> BooleanChunked {
+        if let Ok(a) = self.utf8() {
+            a.gt(rhs)
+        } else {
+            std::iter::repeat(false).take(self.len()).collect()
+        }
+    }
+
+    fn gt_eq(&self, rhs: &str) -> BooleanChunked {
+        if let Ok(a) = self.utf8() {
+            a.gt_eq(rhs)
+        } else {
+            std::iter::repeat(false).take(self.len()).collect()
+        }
+    }
+
+    fn lt(&self, rhs: &str) -> BooleanChunked {
+        if let Ok(a) = self.utf8() {
+            a.lt(rhs)
+        } else {
+            std::iter::repeat(false).take(self.len()).collect()
+        }
+    }
+
+    fn lt_eq(&self, rhs: &str) -> BooleanChunked {
+        if let Ok(a) = self.utf8() {
+            a.lt_eq(rhs)
+        } else {
+            std::iter::repeat(false).take(self.len()).collect()
+        }
+    }
+}

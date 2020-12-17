@@ -414,7 +414,7 @@ impl DataFrame {
             .iter_mut()
             .zip(df.columns.iter())
             .for_each(|(left, right)| {
-                left.append(&**right).expect("should not fail");
+                left.append(right).expect("should not fail");
             });
         self.register_mutation()?;
         Ok(self)

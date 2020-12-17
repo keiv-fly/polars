@@ -305,7 +305,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Append a Series of the same type in place.
-    fn append(&self, other: &dyn SeriesTrait) -> Result<Series> {
+    fn append(&self, other: &Series) -> Result<Series> {
         unimplemented!()
     }
 

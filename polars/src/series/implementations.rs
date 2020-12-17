@@ -555,11 +555,11 @@ macro_rules! impl_dyn_series {
             }
 
             /// Append a Series of the same type in place.
-            fn append(&self, other: &dyn SeriesTrait) -> Result<Series> {
+            fn append(&self, other: &Series) -> Result<Series> {
                 if self.0.dtype() == other.dtype() {
                     let mut ca = self.0.clone();
                     // todo! add object
-                    ca.append(other.as_ref());
+                    ca.append(other.as_ref().as_ref());
                     Ok(ca.into_series())
                 } else {
                     Err(PolarsError::DataTypeMisMatch(

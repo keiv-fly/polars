@@ -264,8 +264,7 @@ where
     type Output = Series;
 
     fn sub(self, rhs: T) -> Self::Output {
-        // apply_method_all_arrow_series!(self, subtract_number, rhs)
-        todo!()
+        apply_method_all_arrow_series!(self, subtract_number, rhs)
     }
 }
 
@@ -276,8 +275,7 @@ where
     type Output = Series;
 
     fn add(self, rhs: T) -> Self::Output {
-        // apply_method_all_arrow_series!(self, add_number, rhs)
-        todo!()
+        apply_method_all_arrow_series!(self, add_number, rhs)
     }
 }
 
@@ -288,8 +286,7 @@ where
     type Output = Series;
 
     fn div(self, rhs: T) -> Self::Output {
-        // apply_method_all_arrow_series!(self, divide_number, rhs)
-        todo!()
+        apply_method_all_arrow_series!(self, divide_number, rhs)
     }
 }
 
@@ -300,8 +297,7 @@ where
     type Output = Series;
 
     fn mul(self, rhs: T) -> Self::Output {
-        // apply_method_all_arrow_series!(self, multiply_number, rhs)
-        todo!()
+        apply_method_all_arrow_series!(self, multiply_number, rhs)
     }
 }
 
@@ -385,10 +381,10 @@ where
 pub trait LhsNumOps {
     type Output;
 
-    fn add(self, rhs: &dyn SeriesTrait) -> Self::Output;
-    fn sub(self, rhs: &dyn SeriesTrait) -> Self::Output;
-    fn div(self, rhs: &dyn SeriesTrait) -> Self::Output;
-    fn mul(self, rhs: &dyn SeriesTrait) -> Self::Output;
+    fn add(self, rhs: &Series) -> Self::Output;
+    fn sub(self, rhs: &Series) -> Self::Output;
+    fn div(self, rhs: &Series) -> Self::Output;
+    fn mul(self, rhs: &Series) -> Self::Output;
 }
 
 impl<T> LhsNumOps for T
@@ -397,21 +393,17 @@ where
 {
     type Output = Series;
 
-    fn add(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        // apply_method_all_arrow_series!(rhs, lhs_add_number, self)
-        todo!()
+    fn add(self, rhs: &Series) -> Self::Output {
+        apply_method_all_arrow_series!(rhs, lhs_add_number, self)
     }
-    fn sub(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        // apply_method_all_arrow_series!(rhs, lhs_subtract_number, self)
-        todo!()
+    fn sub(self, rhs: &Series) -> Self::Output {
+        apply_method_all_arrow_series!(rhs, lhs_subtract_number, self)
     }
-    fn div(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        // apply_method_all_arrow_series!(rhs, lhs_divide_number, self)
-        todo!()
+    fn div(self, rhs: &Series) -> Self::Output {
+        apply_method_all_arrow_series!(rhs, lhs_divide_number, self)
     }
-    fn mul(self, rhs: &dyn SeriesTrait) -> Self::Output {
-        // apply_method_all_arrow_series!(rhs, lhs_multiply_number, self)
-        todo!()
+    fn mul(self, rhs: &Series) -> Self::Output {
+        apply_method_all_arrow_series!(rhs, lhs_multiply_number, self)
     }
 }
 
