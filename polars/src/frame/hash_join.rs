@@ -349,7 +349,7 @@ impl HashJoin<Utf8Type> for Utf8Chunked {
     }
 }
 
-pub trait ZipOuterJoinColumn {
+pub(crate) trait ZipOuterJoinColumn {
     fn zip_outer_join_column(
         &self,
         _right_column: &dyn SeriesTrait,
@@ -595,8 +595,7 @@ impl DataFrame {
                     )
             },
         );
-        let mut s =
-            apply_method_all_series!(s_left, zip_outer_join_column, s_right, &opt_join_tuples);
+        let mut s = s_left.zip_outer_join_column(s_right, &opt_join_tuples);
         s.rename(s_left.name());
         df_left.hstack_mut(&[s])?;
         self.finish_join(df_left, df_right)

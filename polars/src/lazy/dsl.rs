@@ -11,14 +11,14 @@ use std::{
 };
 
 pub trait Udf: Send + Sync {
-    fn call_udf(&self, s: Series) -> Result<Series>;
+    fn call_udf(&self, s: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>>;
 }
 
 impl<F> Udf for F
 where
-    F: Fn(Series) -> Result<Series> + Send + Sync,
+    F: Fn(&dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> + Send + Sync,
 {
-    fn call_udf(&self, s: Series) -> Result<Series> {
+    fn call_udf(&self, s: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
         self(s)
     }
 }
@@ -799,7 +799,7 @@ impl Expr {
 
     /// Standard deviation of the values of the Series
     pub fn std(self) -> Self {
-        let function = move |s: Series| {
+        let function = move |s: &dyn SeriesTrait| {
             s.std_as_series()
                 .cast_with_arrow_datatype(&ArrowDataType::Float64)
         };
@@ -808,7 +808,7 @@ impl Expr {
 
     /// Variance of the values of the Series
     pub fn var(self) -> Self {
-        let function = move |s: Series| {
+        let function = move |s: &dyn SeriesTrait| {
             s.var_as_series()
                 .cast_with_arrow_datatype(&ArrowDataType::Float64)
         };

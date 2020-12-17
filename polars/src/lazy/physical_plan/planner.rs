@@ -284,7 +284,7 @@ impl DefaultPlanner {
                 match ctxt {
                     Context::Aggregation => Ok(Arc::new(AggExpr::new(input, GroupByMethod::Min))),
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| Ok(s.min_as_series()));
+                        let function = Arc::new(move |s: &dyn SeriesTrait| Ok(s.min_as_series()));
                         Ok(Arc::new(ApplyExpr {
                             input,
                             function,
@@ -299,7 +299,7 @@ impl DefaultPlanner {
                 match ctxt {
                     Context::Aggregation => Ok(Arc::new(AggExpr::new(input, GroupByMethod::Max))),
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| Ok(s.max_as_series()));
+                        let function = Arc::new(move |s: &dyn SeriesTrait| Ok(s.max_as_series()));
                         Ok(Arc::new(ApplyExpr {
                             input,
                             function,
@@ -314,7 +314,7 @@ impl DefaultPlanner {
                 match ctxt {
                     Context::Aggregation => Ok(Arc::new(AggExpr::new(input, GroupByMethod::Sum))),
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| Ok(s.sum_as_series()));
+                        let function = Arc::new(move |s: &dyn SeriesTrait| Ok(s.sum_as_series()));
                         Ok(Arc::new(ApplyExpr {
                             input,
                             function,
@@ -329,7 +329,7 @@ impl DefaultPlanner {
                 match ctxt {
                     Context::Aggregation => Ok(Arc::new(AggExpr::new(input, GroupByMethod::Mean))),
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| Ok(s.mean_as_series()));
+                        let function = Arc::new(move |s: &dyn SeriesTrait| Ok(s.mean_as_series()));
                         Ok(Arc::new(ApplyExpr {
                             input,
                             function,
@@ -346,7 +346,8 @@ impl DefaultPlanner {
                         Ok(Arc::new(AggExpr::new(input, GroupByMethod::Median)))
                     }
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| Ok(s.median_as_series()));
+                        let function =
+                            Arc::new(move |s: &dyn SeriesTrait| Ok(s.median_as_series()));
                         Ok(Arc::new(ApplyExpr {
                             input,
                             function,
@@ -386,9 +387,11 @@ impl DefaultPlanner {
                         Ok(Arc::new(AggExpr::new(input, GroupByMethod::NUnique)))
                     }
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| {
-                            s.n_unique()
-                                .map(|count| Series::new(s.name(), &[count as u32]))
+                        let function = Arc::new(move |s: &dyn SeriesTrait| {
+                            s.n_unique().map(|count| {
+                                UInt32Chunked::new_from_slice(s.name(), &[count as u32])
+                                    .into_series()
+                            })
                         });
                         Ok(Arc::new(ApplyExpr {
                             input,
@@ -405,7 +408,8 @@ impl DefaultPlanner {
                 match ctxt {
                     Context::Aggregation => Ok(Arc::new(AggQuantileExpr::new(input, quantile))),
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| s.quantile_as_series(quantile));
+                        let function =
+                            Arc::new(move |s: &dyn SeriesTrait| s.quantile_as_series(quantile));
                         Ok(Arc::new(ApplyExpr {
                             input,
                             function,
@@ -427,9 +431,10 @@ impl DefaultPlanner {
                 match ctxt {
                     Context::Aggregation => Ok(Arc::new(AggExpr::new(input, GroupByMethod::Count))),
                     Context::Other => {
-                        let function = Arc::new(move |s: Series| {
+                        let function = Arc::new(move |s: &dyn SeriesTrait| {
                             let count = s.len();
-                            Ok(Series::new(s.name(), &[count as u32]))
+                            Ok(UInt32Chunked::new_from_slice(s.name(), &[count as u32])
+                                .into_series())
                         });
                         Ok(Arc::new(ApplyExpr {
                             input,
@@ -474,22 +479,25 @@ impl DefaultPlanner {
             }
             Expr::Shift { input, periods } => {
                 let input = self.create_physical_expr(*input, ctxt)?;
-                let function = Arc::new(move |s: Series| s.shift(periods));
+                let function = Arc::new(move |s: &dyn SeriesTrait| s.shift(periods));
                 Ok(Arc::new(ApplyExpr::new(input, function, None, expression)))
             }
             Expr::Reverse(expr) => {
                 let input = self.create_physical_expr(*expr, ctxt)?;
-                let function = Arc::new(move |s: Series| Ok(s.reverse()));
+                let function = Arc::new(move |s: &dyn SeriesTrait| Ok(s.reverse()));
                 Ok(Arc::new(ApplyExpr::new(input, function, None, expression)))
             }
             Expr::Duplicated(expr) => {
                 let input = self.create_physical_expr(*expr, ctxt)?;
-                let function = Arc::new(move |s: Series| s.is_duplicated().map(|ca| ca.into()));
+                let function = Arc::new(move |s: &dyn SeriesTrait| {
+                    s.is_duplicated().map(|ca| ca.into_series())
+                });
                 Ok(Arc::new(ApplyExpr::new(input, function, None, expression)))
             }
             Expr::Unique(expr) => {
                 let input = self.create_physical_expr(*expr, ctxt)?;
-                let function = Arc::new(move |s: Series| s.is_unique().map(|ca| ca.into()));
+                let function =
+                    Arc::new(move |s: &dyn SeriesTrait| s.is_unique().map(|ca| ca.into_series()));
                 Ok(Arc::new(ApplyExpr::new(input, function, None, expression)))
             }
             Expr::Wildcard => panic!("should be no wildcard at this point"),

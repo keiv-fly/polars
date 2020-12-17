@@ -52,7 +52,7 @@ macro_rules! impl_compare {
     }};
 }
 
-impl ChunkCompare<&dyn SeriesTrait> for Series {
+impl<'a> ChunkCompare<&dyn SeriesTrait> for dyn SeriesTrait + 'a {
     fn eq_missing(&self, rhs: &dyn SeriesTrait) -> BooleanChunked {
         let (lhs, rhs) = coerce_lhs_rhs(self, rhs).expect("cannot coerce datatypes");
         impl_compare!(lhs.as_ref(), rhs.as_ref(), eq_missing)

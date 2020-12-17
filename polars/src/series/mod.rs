@@ -56,6 +56,11 @@ pub(crate) mod private {
         fn hash_join_inner(&self, other: &dyn SeriesTrait) -> Vec<(usize, usize)>;
         fn hash_join_left(&self, other: &dyn SeriesTrait) -> Vec<(usize, Option<usize>)>;
         fn hash_join_outer(&self, other: &dyn SeriesTrait) -> Vec<(Option<usize>, Option<usize>)>;
+        fn zip_outer_join_column(
+            &self,
+            right_column: &dyn SeriesTrait,
+            opt_join_tuples: &[(Option<usize>, Option<usize>)],
+        ) -> Arc<dyn SeriesTrait>;
     }
 }
 
@@ -677,12 +682,12 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     fn clone(&self) -> Arc<dyn SeriesTrait>;
 }
 
-impl dyn SeriesTrait {
-    pub fn unpack<N>(&self) -> Result<&ChunkedArray<N>>
+impl<'a> (dyn SeriesTrait + 'a) {
+    pub fn unpack<N: 'static>(&self) -> Result<&ChunkedArray<N>>
     where
         N: PolarsDataType,
     {
-        if N::get_data_type() == self.dtype() {
+        if &N::get_data_type() == self.dtype() {
             Ok(self.as_ref())
         } else {
             Err(PolarsError::DataTypeMisMatch(
@@ -1793,111 +1798,111 @@ impl_named_from!([Option<i64>], Int64, new_from_opt_slice);
 impl_named_from!([Option<f32>], Float32, new_from_opt_slice);
 impl_named_from!([Option<f64>], Float64, new_from_opt_slice);
 
-impl<T: AsRef<[Series]>> NamedFrom<T, ListType> for Series {
-    fn new(name: &str, s: T) -> Self {
-        let series_slice = s.as_ref();
-        let dt = series_slice[0].dtype();
-        let mut builder = get_list_builder(dt, series_slice.len(), name);
-        for series in series_slice {
-            builder.append_series(series)
-        }
-        builder.finish().into_series()
-    }
-}
+// impl<T: AsRef<[Series]>> NamedFrom<T, ListType> for Series {
+//     fn new(name: &str, s: T) -> Self {
+//         let series_slice = s.as_ref();
+//         let dt = series_slice[0].dtype();
+//         let mut builder = get_list_builder(dt, series_slice.len(), name);
+//         for series in series_slice {
+//             builder.append_series(series)
+//         }
+//         builder.finish().into_series()
+//     }
+// }
 
-macro_rules! impl_as_ref_ca {
-    ($type:ident, $series_var:ident) => {
-        impl AsRef<ChunkedArray<datatypes::$type>> for Series {
-            fn as_ref(&self) -> &ChunkedArray<datatypes::$type> {
-                match self {
-                    Series::$series_var(a) => a,
-                    _ => unimplemented!(),
-                }
-            }
-        }
-    };
-}
+// macro_rules! impl_as_ref_ca {
+//     ($type:ident, $series_var:ident) => {
+//         impl AsRef<ChunkedArray<datatypes::$type>> for Series {
+//             fn as_ref(&self) -> &ChunkedArray<datatypes::$type> {
+//                 match self {
+//                     Series::$series_var(a) => a,
+//                     _ => unimplemented!(),
+//                 }
+//             }
+//         }
+//     };
+// }
 
-impl_as_ref_ca!(UInt8Type, UInt8);
-impl_as_ref_ca!(UInt16Type, UInt16);
-impl_as_ref_ca!(UInt32Type, UInt32);
-impl_as_ref_ca!(UInt64Type, UInt64);
-impl_as_ref_ca!(Int8Type, Int8);
-impl_as_ref_ca!(Int16Type, Int16);
-impl_as_ref_ca!(Int32Type, Int32);
-impl_as_ref_ca!(Int64Type, Int64);
-impl_as_ref_ca!(Float32Type, Float32);
-impl_as_ref_ca!(Float64Type, Float64);
-impl_as_ref_ca!(BooleanType, Bool);
-impl_as_ref_ca!(Utf8Type, Utf8);
-impl_as_ref_ca!(Date32Type, Date32);
-impl_as_ref_ca!(Date64Type, Date64);
-impl_as_ref_ca!(Time64NanosecondType, Time64Nanosecond);
-impl_as_ref_ca!(DurationNanosecondType, DurationNanosecond);
-impl_as_ref_ca!(DurationMillisecondType, DurationMillisecond);
-#[cfg(feature = "dtype-interval")]
-impl_as_ref_ca!(IntervalDayTimeType, IntervalDayTime);
-#[cfg(feature = "dtype-interval")]
-impl_as_ref_ca!(IntervalYearMonthType, IntervalYearMonth);
-impl_as_ref_ca!(ListType, List);
+// impl_as_ref_ca!(UInt8Type, UInt8);
+// impl_as_ref_ca!(UInt16Type, UInt16);
+// impl_as_ref_ca!(UInt32Type, UInt32);
+// impl_as_ref_ca!(UInt64Type, UInt64);
+// impl_as_ref_ca!(Int8Type, Int8);
+// impl_as_ref_ca!(Int16Type, Int16);
+// impl_as_ref_ca!(Int32Type, Int32);
+// impl_as_ref_ca!(Int64Type, Int64);
+// impl_as_ref_ca!(Float32Type, Float32);
+// impl_as_ref_ca!(Float64Type, Float64);
+// impl_as_ref_ca!(BooleanType, Bool);
+// impl_as_ref_ca!(Utf8Type, Utf8);
+// impl_as_ref_ca!(Date32Type, Date32);
+// impl_as_ref_ca!(Date64Type, Date64);
+// impl_as_ref_ca!(Time64NanosecondType, Time64Nanosecond);
+// impl_as_ref_ca!(DurationNanosecondType, DurationNanosecond);
+// impl_as_ref_ca!(DurationMillisecondType, DurationMillisecond);
+// #[cfg(feature = "dtype-interval")]
+// impl_as_ref_ca!(IntervalDayTimeType, IntervalDayTime);
+// #[cfg(feature = "dtype-interval")]
+// impl_as_ref_ca!(IntervalYearMonthType, IntervalYearMonth);
+// impl_as_ref_ca!(ListType, List);
+//
+// impl AsRef<Box<dyn SeriesOps>> for Series {
+//     fn as_ref(&self) -> &Box<dyn SeriesOps> {
+//         match self {
+//             Series::Object(a) => a,
+//             _ => unimplemented!(),
+//         }
+//     }
+// }
 
-impl AsRef<Box<dyn SeriesOps>> for Series {
-    fn as_ref(&self) -> &Box<dyn SeriesOps> {
-        match self {
-            Series::Object(a) => a,
-            _ => unimplemented!(),
-        }
-    }
-}
+// macro_rules! impl_as_mut_ca {
+//     ($type:ident, $series_var:ident) => {
+//         impl AsMut<ChunkedArray<datatypes::$type>> for Series {
+//             fn as_mut(&mut self) -> &mut ChunkedArray<datatypes::$type> {
+//                 match self {
+//                     Series::$series_var(a) => a,
+//                     _ => unimplemented!(),
+//                 }
+//             }
+//         }
+//     };
+// }
 
-macro_rules! impl_as_mut_ca {
-    ($type:ident, $series_var:ident) => {
-        impl AsMut<ChunkedArray<datatypes::$type>> for Series {
-            fn as_mut(&mut self) -> &mut ChunkedArray<datatypes::$type> {
-                match self {
-                    Series::$series_var(a) => a,
-                    _ => unimplemented!(),
-                }
-            }
-        }
-    };
-}
-
-impl_as_mut_ca!(UInt8Type, UInt8);
-impl_as_mut_ca!(UInt16Type, UInt16);
-impl_as_mut_ca!(UInt32Type, UInt32);
-impl_as_mut_ca!(UInt64Type, UInt64);
-impl_as_mut_ca!(Int8Type, Int8);
-impl_as_mut_ca!(Int16Type, Int16);
-impl_as_mut_ca!(Int32Type, Int32);
-impl_as_mut_ca!(Int64Type, Int64);
-impl_as_mut_ca!(Float32Type, Float32);
-impl_as_mut_ca!(Float64Type, Float64);
-impl_as_mut_ca!(BooleanType, Bool);
-impl_as_mut_ca!(Utf8Type, Utf8);
-impl_as_mut_ca!(Date32Type, Date32);
-impl_as_mut_ca!(Date64Type, Date64);
-impl_as_mut_ca!(Time64NanosecondType, Time64Nanosecond);
-impl_as_mut_ca!(DurationNanosecondType, DurationNanosecond);
-impl_as_mut_ca!(DurationMillisecondType, DurationMillisecond);
-#[cfg(feature = "dtype-interval")]
-impl_as_mut_ca!(IntervalDayTimeType, IntervalDayTime);
-#[cfg(feature = "dtype-interval")]
-impl_as_mut_ca!(IntervalYearMonthType, IntervalYearMonth);
-impl_as_mut_ca!(ListType, List);
-
-macro_rules! from_series_to_ca {
-    ($variant:ident, $ca:ident) => {
-        impl<'a> From<&'a Series> for &'a $ca {
-            fn from(s: &'a Series) -> Self {
-                match s {
-                    Series::$variant(ca) => ca,
-                    _ => unimplemented!(),
-                }
-            }
-        }
-    };
-}
+// impl_as_mut_ca!(UInt8Type, UInt8);
+// impl_as_mut_ca!(UInt16Type, UInt16);
+// impl_as_mut_ca!(UInt32Type, UInt32);
+// impl_as_mut_ca!(UInt64Type, UInt64);
+// impl_as_mut_ca!(Int8Type, Int8);
+// impl_as_mut_ca!(Int16Type, Int16);
+// impl_as_mut_ca!(Int32Type, Int32);
+// impl_as_mut_ca!(Int64Type, Int64);
+// impl_as_mut_ca!(Float32Type, Float32);
+// impl_as_mut_ca!(Float64Type, Float64);
+// impl_as_mut_ca!(BooleanType, Bool);
+// impl_as_mut_ca!(Utf8Type, Utf8);
+// impl_as_mut_ca!(Date32Type, Date32);
+// impl_as_mut_ca!(Date64Type, Date64);
+// impl_as_mut_ca!(Time64NanosecondType, Time64Nanosecond);
+// impl_as_mut_ca!(DurationNanosecondType, DurationNanosecond);
+// impl_as_mut_ca!(DurationMillisecondType, DurationMillisecond);
+// #[cfg(feature = "dtype-interval")]
+// impl_as_mut_ca!(IntervalDayTimeType, IntervalDayTime);
+// #[cfg(feature = "dtype-interval")]
+// impl_as_mut_ca!(IntervalYearMonthType, IntervalYearMonth);
+// impl_as_mut_ca!(ListType, List);
+//
+// macro_rules! from_series_to_ca {
+//     ($variant:ident, $ca:ident) => {
+//         impl<'a> From<&'a Series> for &'a $ca {
+//             fn from(s: &'a Series) -> Self {
+//                 match s {
+//                     Series::$variant(ca) => ca,
+//                     _ => unimplemented!(),
+//                 }
+//             }
+//         }
+//     };
+// }
 from_series_to_ca!(UInt8, UInt8Chunked);
 from_series_to_ca!(UInt16, UInt16Chunked);
 from_series_to_ca!(UInt32, UInt32Chunked);
@@ -1926,7 +1931,7 @@ impl From<(&str, ArrayRef)> for Wrap<Arc<dyn SeriesTrait>> {
     fn from(name_arr: (&str, ArrayRef)) -> Self {
         let (name, arr) = name_arr;
         let chunk = vec![arr];
-        match chunk[0].data_type() {
+        let s = match chunk[0].data_type() {
             ArrowDataType::Utf8 => Utf8Chunked::new_from_chunks(name, chunk).into_series(),
             ArrowDataType::Boolean => BooleanChunked::new_from_chunks(name, chunk).into_series(),
             ArrowDataType::UInt8 => UInt8Chunked::new_from_chunks(name, chunk).into_series(),
@@ -1963,8 +1968,9 @@ impl From<(&str, ArrayRef)> for Wrap<Arc<dyn SeriesTrait>> {
                 DurationMillisecondChunked::new_from_chunks(name, chunk).into_series()
             }
             ArrowDataType::List(_) => ListChunked::new_from_chunks(name, chunk).into_series(),
-            _ => unimplemented!(),
-        }
+            dt => panic!(format!("datatype {:?} not supported", dt)),
+        };
+        Wrap(s)
     }
 }
 

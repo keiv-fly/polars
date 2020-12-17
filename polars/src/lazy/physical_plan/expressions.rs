@@ -21,7 +21,7 @@ impl PhysicalExpr for LiteralExpr {
     fn as_expression(&self) -> &Expr {
         &self.1
     }
-    fn evaluate(&self, _df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, _df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         use ScalarValue::*;
         let s = match &self.0 {
             Int8(v) => Int8Chunked::full("literal", *v, 1).into_series(),
@@ -91,28 +91,31 @@ impl PhysicalExpr for BinaryExpr {
         &self.expr
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
-        let left = self.left.evaluate(df)?;
-        let right = self.right.evaluate(df)?;
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
+        let left = &*self.left.evaluate(df)?;
+        let right = &*self.right.evaluate(df)?;
+
         match self.op {
-            Operator::Gt => Ok(ChunkCompare::<&Series>::gt(&left, &right).into()),
-            Operator::GtEq => Ok(ChunkCompare::<&Series>::gt_eq(&left, &right).into()),
-            Operator::Lt => Ok(ChunkCompare::<&Series>::lt(&left, &right).into()),
-            Operator::LtEq => Ok(ChunkCompare::<&Series>::lt_eq(&left, &right).into()),
-            Operator::Eq => Ok(ChunkCompare::<&Series>::eq(&left, &right).into()),
-            Operator::NotEq => Ok(ChunkCompare::<&Series>::neq(&left, &right).into()),
+            Operator::Gt => Ok(ChunkCompare::<&dyn SeriesTrait>::gt(left, right).into_series()),
+            Operator::GtEq => {
+                Ok(ChunkCompare::<&dyn SeriesTrait>::gt_eq(left, right).into_series())
+            }
+            Operator::Lt => Ok(ChunkCompare::<&dyn SeriesTrait>::lt(left, right).into_series()),
+            Operator::LtEq => {
+                Ok(ChunkCompare::<&dyn SeriesTrait>::lt_eq(left, right).into_series())
+            }
+            Operator::Eq => Ok(ChunkCompare::<&dyn SeriesTrait>::eq(left, right).into_series()),
+            Operator::NotEq => Ok(ChunkCompare::<&dyn SeriesTrait>::neq(left, right).into_series()),
             Operator::Plus => Ok(left + right),
             Operator::Minus => Ok(left - right),
             Operator::Multiply => Ok(left * right),
             Operator::Divide => Ok(left / right),
             Operator::And => Ok((left.bool()? & right.bool()?).into_series()),
             Operator::Or => Ok((left.bool()? | right.bool()?).into_series()),
-            Operator::Not => Ok(ChunkCompare::<&Series>::eq(&left, &right).into()),
+            Operator::Not => Ok(ChunkCompare::<&dyn SeriesTrait>::eq(left, right).into_series()),
             Operator::Like => todo!(),
             Operator::NotLike => todo!(),
-            Operator::Modulus => {
-                apply_method_all_arrow_series!(left, remainder, &right).map(|ca| ca.into_series())
-            }
+            Operator::Modulus => Ok(left % right),
         }
     }
     fn to_field(&self, _input_schema: &Schema) -> Result<Field> {
@@ -132,7 +135,7 @@ impl PhysicalExpr for ColumnExpr {
     fn as_expression(&self) -> &Expr {
         &self.1
     }
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let column = df.column(&self.0)?;
         Ok(column.clone())
     }
@@ -163,7 +166,7 @@ impl PhysicalExpr for SortExpr {
         &self.expr
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let series = self.physical_expr.evaluate(df)?;
         Ok(series.sort(self.reverse))
     }
@@ -184,9 +187,9 @@ impl PhysicalExpr for NotExpr {
         &self.1
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let series = self.0.evaluate(df)?;
-        if let Series::Bool(ca) = series {
+        if let Ok(ca) = series.bool() {
             Ok((!ca).into_series())
         } else {
             Err(PolarsError::InvalidOperation(
@@ -220,7 +223,7 @@ impl PhysicalExpr for AliasExpr {
         &self.expr
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let mut series = self.physical_expr.evaluate(df)?;
         series.rename(&self.name);
         Ok(series)
@@ -243,7 +246,11 @@ impl PhysicalExpr for AliasExpr {
 }
 
 impl AggPhysicalExpr for AliasExpr {
-    fn evaluate(&self, df: &DataFrame, groups: &[(usize, Vec<usize>)]) -> Result<Option<Series>> {
+    fn evaluate(
+        &self,
+        df: &DataFrame,
+        groups: &[(usize, Vec<usize>)],
+    ) -> Result<Option<Arc<dyn SeriesTrait>>> {
         let agg_expr = self.physical_expr.as_agg_expr()?;
         let opt_agg = agg_expr.evaluate(df, groups)?;
         Ok(opt_agg.map(|mut agg| {
@@ -272,7 +279,7 @@ impl PhysicalExpr for IsNullExpr {
         &self.expr
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let series = self.physical_expr.evaluate(df)?;
         Ok(series.is_null().into_series())
     }
@@ -300,7 +307,7 @@ impl PhysicalExpr for IsNotNullExpr {
         &self.expr
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let series = self.physical_expr.evaluate(df)?;
         Ok(series.is_not_null().into_series())
     }
@@ -334,7 +341,7 @@ impl AggExpr {
 }
 
 impl PhysicalExpr for AggExpr {
-    fn evaluate(&self, _df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, _df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 
@@ -353,7 +360,10 @@ impl PhysicalExpr for AggExpr {
     }
 }
 
-fn rename_option_series(opt: Option<Series>, name: &str) -> Option<Series> {
+fn rename_option_series(
+    opt: Option<Arc<dyn SeriesTrait>>,
+    name: &str,
+) -> Option<Arc<dyn SeriesTrait>> {
     opt.map(|mut s| {
         s.rename(name);
         s
@@ -361,49 +371,53 @@ fn rename_option_series(opt: Option<Series>, name: &str) -> Option<Series> {
 }
 
 impl AggPhysicalExpr for AggExpr {
-    fn evaluate(&self, df: &DataFrame, groups: &[(usize, Vec<usize>)]) -> Result<Option<Series>> {
+    fn evaluate(
+        &self,
+        df: &DataFrame,
+        groups: &[(usize, Vec<usize>)],
+    ) -> Result<Option<Arc<dyn SeriesTrait>>> {
         let series = self.expr.evaluate(df)?;
         let new_name = fmt_groupby_column(series.name(), self.agg_type);
 
         match self.agg_type {
             GroupByMethod::Min => {
-                let agg_s = apply_method_all_arrow_series!(series, agg_min, groups);
+                let agg_s = series.agg_min(groups);
                 Ok(rename_option_series(agg_s, &new_name))
             }
             GroupByMethod::Max => {
-                let agg_s = apply_method_all_arrow_series!(series, agg_max, groups);
+                let agg_s = series.agg_max(groups);
                 Ok(rename_option_series(agg_s, &new_name))
             }
             GroupByMethod::Median => {
-                let agg_s = apply_method_all_arrow_series!(series, agg_median, groups);
+                let agg_s = series.agg_median(groups);
                 Ok(rename_option_series(agg_s, &new_name))
             }
             GroupByMethod::Mean => {
-                let agg_s = apply_method_all_arrow_series!(series, agg_mean, groups);
+                let agg_s = series.agg_mean(groups);
                 Ok(rename_option_series(agg_s, &new_name))
             }
             GroupByMethod::Sum => {
-                let agg_s = apply_method_all_arrow_series!(series, agg_sum, groups);
+                let agg_s = series.agg_sum(groups);
                 Ok(rename_option_series(agg_s, &new_name))
             }
             GroupByMethod::Count => {
                 let mut ca: Xob<UInt32Chunked> =
                     groups.iter().map(|(_, g)| g.len() as u32).collect();
                 ca.rename(&new_name);
-                Ok(Some(ca.into_inner().into()))
+                Ok(Some(ca.into_inner().into_series()))
             }
             GroupByMethod::First => {
-                let mut agg_s = apply_method_all_arrow_series!(series, agg_first, groups);
+                let mut agg_s = series.agg_first(groups);
                 agg_s.rename(&new_name);
                 Ok(Some(agg_s))
             }
             GroupByMethod::Last => {
-                let mut agg_s = apply_method_all_arrow_series!(series, agg_last, groups);
+                let mut agg_s = series.agg_last(groups);
                 agg_s.rename(&new_name);
                 Ok(Some(agg_s))
             }
             GroupByMethod::NUnique => {
-                let opt_agg = apply_method_all_arrow_series!(series, agg_n_unique, groups);
+                let opt_agg = series.agg_n_unique(groups);
                 let opt_agg = opt_agg.map(|mut agg| {
                     agg.rename(&new_name);
                     agg.into_series()
@@ -411,7 +425,7 @@ impl AggPhysicalExpr for AggExpr {
                 Ok(opt_agg)
             }
             GroupByMethod::List => {
-                let opt_agg = apply_method_all_arrow_series!(series, agg_list, groups);
+                let opt_agg = series.agg_list(groups);
                 Ok(rename_option_series(opt_agg, &new_name))
             }
             GroupByMethod::Groups => {
@@ -443,7 +457,7 @@ impl AggQuantileExpr {
 }
 
 impl PhysicalExpr for AggQuantileExpr {
-    fn evaluate(&self, _df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, _df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 
@@ -457,10 +471,14 @@ impl PhysicalExpr for AggQuantileExpr {
 }
 
 impl AggPhysicalExpr for AggQuantileExpr {
-    fn evaluate(&self, df: &DataFrame, groups: &[(usize, Vec<usize>)]) -> Result<Option<Series>> {
+    fn evaluate(
+        &self,
+        df: &DataFrame,
+        groups: &[(usize, Vec<usize>)],
+    ) -> Result<Option<Arc<dyn SeriesTrait>>> {
         let series = self.expr.evaluate(df)?;
         let new_name = fmt_groupby_column(series.name(), GroupByMethod::Quantile(self.quantile));
-        let opt_agg = apply_method_all_arrow_series!(series, agg_quantile, groups, self.quantile);
+        let opt_agg = series.agg_quantile(groups, self.quantile);
 
         let opt_agg = opt_agg.map(|mut agg| {
             agg.rename(&new_name);
@@ -488,7 +506,7 @@ impl CastExpr {
 }
 
 impl PhysicalExpr for CastExpr {
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let series = self.input.evaluate(df)?;
         series.cast_with_arrow_datatype(&self.data_type)
     }
@@ -508,12 +526,12 @@ impl PhysicalExpr for TernaryExpr {
     fn as_expression(&self) -> &Expr {
         &self.expr
     }
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let mask_series = self.predicate.evaluate(df)?;
         let mask = mask_series.bool()?;
         let truthy = self.truthy.evaluate(df)?;
         let falsy = self.falsy.evaluate(df)?;
-        truthy.zip_with(&mask, &falsy)
+        truthy.zip_with(&mask, &*falsy)
     }
     fn to_field(&self, input_schema: &Schema) -> Result<Field> {
         self.truthy.to_field(input_schema)
@@ -548,8 +566,8 @@ impl PhysicalExpr for ApplyExpr {
         &self.expr
     }
 
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
-        let input = self.input.evaluate(df)?;
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
+        let input = &*self.input.evaluate(df)?;
         let in_name = input.name().to_string();
         let mut out = self.function.call_udf(input)?;
         if in_name != out.name() {
@@ -585,7 +603,7 @@ pub struct WindowExpr {
 impl PhysicalExpr for WindowExpr {
     // Note: this was first implemented with expression evaluation but this performed really bad.
     // Therefore we choose the groupby -> apply -> self join approach
-    fn evaluate(&self, df: &DataFrame) -> Result<Series> {
+    fn evaluate(&self, df: &DataFrame) -> Result<Arc<dyn SeriesTrait>> {
         let gb = df
             .groupby(self.group_column.as_str())?
             .select(self.apply_column.as_str());

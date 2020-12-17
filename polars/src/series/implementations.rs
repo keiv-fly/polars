@@ -4,7 +4,7 @@ use crate::chunked_array::ops::aggregate::{ChunkAggSeries, VarAggSeries};
 use crate::datatypes::ArrowDataType;
 use crate::fmt::FmtList;
 use crate::frame::group_by::PivotAgg;
-use crate::frame::hash_join::HashJoin;
+use crate::frame::hash_join::{HashJoin, ZipOuterJoinColumn};
 use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
@@ -106,6 +106,13 @@ where
     }
     fn hash_join_outer(&self, other: &dyn SeriesTrait) -> Vec<(Option<usize>, Option<usize>)> {
         HashJoin::hash_join_outer(self, other.as_ref())
+    }
+    fn zip_outer_join_column(
+        &self,
+        right_column: &dyn SeriesTrait,
+        opt_join_tuples: &[(Option<usize>, Option<usize>)],
+    ) -> Arc<dyn SeriesTrait> {
+        ZipOuterJoinColumn::zip_outer_join_column(self, right_column, opt_join_tuples)
     }
 }
 
