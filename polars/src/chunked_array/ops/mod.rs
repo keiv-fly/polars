@@ -879,13 +879,13 @@ mod test {
     #[test]
     fn test_shift() {
         let ca = Int32Chunked::new_from_slice("", &[1, 2, 3]);
-        let shifted = ca.shift(1, &Some(0)).unwrap();
+        let shifted = ca.shift_and_fill(1, Some(0)).unwrap();
         assert_eq!(shifted.cont_slice().unwrap(), &[0, 1, 2]);
-        let shifted = ca.shift(1, &None).unwrap();
+        let shifted = ca.shift_and_fill(1, None).unwrap();
         assert_eq!(Vec::from(&shifted), &[None, Some(1), Some(2)]);
-        let shifted = ca.shift(-1, &None).unwrap();
+        let shifted = ca.shift_and_fill(-1, None).unwrap();
         assert_eq!(Vec::from(&shifted), &[Some(2), Some(3), None]);
-        assert!(ca.shift(3, &None).is_err());
+        assert!(ca.shift_and_fill(3, None).is_err());
 
         let s = Series::new("a", ["a", "b", "c"]);
         let shifted = s.shift(-1).unwrap();
