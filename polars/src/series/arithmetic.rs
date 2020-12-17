@@ -415,31 +415,6 @@ where
     }
 }
 
-impl Series {
-    fn pow<E: Num>(&self, exp: E) -> Series
-    where
-        E: ToPrimitive,
-    {
-        match self {
-            Series::UInt8(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::UInt16(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::UInt32(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::UInt64(ca) => Series::Float64(ca.pow_f64(exp.to_f64().unwrap())),
-            Series::Int8(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::Int16(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::Int32(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::Int64(ca) => Series::Float64(ca.pow_f64(exp.to_f64().unwrap())),
-            Series::Float32(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::Float64(ca) => Series::Float64(ca.pow_f64(exp.to_f64().unwrap())),
-            Series::Date32(ca) => Series::Float32(ca.pow_f32(exp.to_f32().unwrap())),
-            Series::Date64(ca) => Series::Float64(ca.pow_f64(exp.to_f64().unwrap())),
-            Series::Time64Nanosecond(ca) => Series::Float64(ca.pow_f64(exp.to_f64().unwrap())),
-            Series::DurationNanosecond(ca) => Series::Float64(ca.pow_f64(exp.to_f64().unwrap())),
-            _ => unimplemented!(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::prelude::*;

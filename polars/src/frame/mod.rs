@@ -40,6 +40,12 @@ impl IntoSeries for Arc<dyn SeriesTrait> {
     }
 }
 
+impl IntoSeries for Series {
+    fn into_series(self) -> Arc<dyn SeriesTrait> {
+        self.0
+    }
+}
+
 impl IntoSeries for ListChunked {}
 impl IntoSeries for BooleanChunked {}
 impl IntoSeries for UInt8Chunked {}

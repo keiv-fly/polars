@@ -16,6 +16,7 @@ use crate::fmt::FmtList;
 use crate::frame::group_by::IntoGroupTuples;
 use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
+use std::ops::Deref;
 use std::sync::Arc;
 
 // make private
@@ -864,33 +865,17 @@ impl<'a> (dyn SeriesTrait + 'a) {
 ///     .collect();
 ///
 /// ```
-pub enum Series {
-    UInt8(ChunkedArray<UInt8Type>),
-    UInt16(ChunkedArray<UInt16Type>),
-    UInt32(ChunkedArray<UInt32Type>),
-    UInt64(ChunkedArray<UInt64Type>),
-    Int8(ChunkedArray<Int8Type>),
-    Int16(ChunkedArray<Int16Type>),
-    Int32(ChunkedArray<Int32Type>),
-    Int64(ChunkedArray<Int64Type>),
-    Float32(ChunkedArray<Float32Type>),
-    Float64(ChunkedArray<Float64Type>),
-    Utf8(ChunkedArray<Utf8Type>),
-    Bool(ChunkedArray<BooleanType>),
-    Date32(ChunkedArray<Date32Type>),
-    Date64(ChunkedArray<Date64Type>),
-    Time64Nanosecond(ChunkedArray<Time64NanosecondType>),
-    DurationNanosecond(ChunkedArray<DurationNanosecondType>),
-    DurationMillisecond(DurationMillisecondChunked),
-    #[cfg(feature = "dtype-interval")]
-    #[doc(cfg(feature = "dtype-interval"))]
-    IntervalDayTime(IntervalDayTimeChunked),
-    #[cfg(feature = "dtype-interval")]
-    #[doc(cfg(feature = "dtype-interval"))]
-    IntervalYearMonth(IntervalYearMonthChunked),
-    List(ListChunked),
-    // Object(Box<dyn SeriesOps>),
+#[derive(Clone)]
+pub struct Series(pub Arc<dyn SeriesTrait>);
+
+impl Deref for Series {
+    type Target = Arc<dyn SeriesTrait>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
+
 //
 // impl Clone for Series {
 //     fn clone(&self) -> Self {
@@ -1826,51 +1811,51 @@ pub trait NamedFrom<T, Phantom: ?Sized> {
     fn new(name: &str, _: T) -> Self;
 }
 //
-// macro_rules! impl_named_from {
-//     ($type:ty, $series_var:ident, $method:ident) => {
-//         impl<T: AsRef<$type>> NamedFrom<T, $type> for Series {
-//             fn new(name: &str, v: T) -> Self {
-//                 Series::$series_var(ChunkedArray::$method(name, v.as_ref()))
-//             }
-//         }
-//     };
-// }
-//
-// impl<'a, T: AsRef<[&'a str]>> NamedFrom<T, [&'a str]> for Series {
-//     fn new(name: &str, v: T) -> Self {
-//         Series::Utf8(ChunkedArray::new_from_slice(name, v.as_ref()))
-//     }
-// }
-// impl<'a, T: AsRef<[Option<&'a str>]>> NamedFrom<T, [Option<&'a str>]> for Series {
-//     fn new(name: &str, v: T) -> Self {
-//         Series::Utf8(ChunkedArray::new_from_opt_slice(name, v.as_ref()))
-//     }
-// }
-//
-// impl_named_from!([String], Utf8, new_from_slice);
-// impl_named_from!([bool], Bool, new_from_slice);
-// impl_named_from!([u8], UInt8, new_from_slice);
-// impl_named_from!([u16], UInt16, new_from_slice);
-// impl_named_from!([u32], UInt32, new_from_slice);
-// impl_named_from!([u64], UInt64, new_from_slice);
-// impl_named_from!([i8], Int8, new_from_slice);
-// impl_named_from!([i16], Int16, new_from_slice);
-// impl_named_from!([i32], Int32, new_from_slice);
-// impl_named_from!([i64], Int64, new_from_slice);
-// impl_named_from!([f32], Float32, new_from_slice);
-// impl_named_from!([f64], Float64, new_from_slice);
-// impl_named_from!([Option<String>], Utf8, new_from_opt_slice);
-// impl_named_from!([Option<bool>], Bool, new_from_opt_slice);
-// impl_named_from!([Option<u8>], UInt8, new_from_opt_slice);
-// impl_named_from!([Option<u16>], UInt16, new_from_opt_slice);
-// impl_named_from!([Option<u32>], UInt32, new_from_opt_slice);
-// impl_named_from!([Option<u64>], UInt64, new_from_opt_slice);
-// impl_named_from!([Option<i8>], Int8, new_from_opt_slice);
-// impl_named_from!([Option<i16>], Int16, new_from_opt_slice);
-// impl_named_from!([Option<i32>], Int32, new_from_opt_slice);
-// impl_named_from!([Option<i64>], Int64, new_from_opt_slice);
-// impl_named_from!([Option<f32>], Float32, new_from_opt_slice);
-// impl_named_from!([Option<f64>], Float64, new_from_opt_slice);
+macro_rules! impl_named_from {
+    ($type:ty, $series_var:ident, $method:ident) => {
+        impl<T: AsRef<$type>> NamedFrom<T, $type> for Series {
+            fn new(name: &str, v: T) -> Self {
+                Series(ChunkedArray::<$series_var>::$method(name, v.as_ref()).into_series())
+            }
+        }
+    };
+}
+
+impl<'a, T: AsRef<[&'a str]>> NamedFrom<T, [&'a str]> for Series {
+    fn new(name: &str, v: T) -> Self {
+        Series(Utf8Chunked::new_from_slice(name, v.as_ref()).into_series())
+    }
+}
+impl<'a, T: AsRef<[Option<&'a str>]>> NamedFrom<T, [Option<&'a str>]> for Series {
+    fn new(name: &str, v: T) -> Self {
+        Series(Utf8Chunked::new_from_opt_slice(name, v.as_ref()).into_series())
+    }
+}
+
+impl_named_from!([String], Utf8Type, new_from_slice);
+impl_named_from!([bool], BooleanType, new_from_slice);
+impl_named_from!([u8], UInt8Type, new_from_slice);
+impl_named_from!([u16], UInt16Type, new_from_slice);
+impl_named_from!([u32], UInt32Type, new_from_slice);
+impl_named_from!([u64], UInt64Type, new_from_slice);
+impl_named_from!([i8], Int8Type, new_from_slice);
+impl_named_from!([i16], Int16Type, new_from_slice);
+impl_named_from!([i32], Int32Type, new_from_slice);
+impl_named_from!([i64], Int64Type, new_from_slice);
+impl_named_from!([f32], Float32Type, new_from_slice);
+impl_named_from!([f64], Float64Type, new_from_slice);
+impl_named_from!([Option<String>], Utf8Type, new_from_opt_slice);
+impl_named_from!([Option<bool>], BooleanType, new_from_opt_slice);
+impl_named_from!([Option<u8>], UInt8Type, new_from_opt_slice);
+impl_named_from!([Option<u16>], UInt16Type, new_from_opt_slice);
+impl_named_from!([Option<u32>], UInt32Type, new_from_opt_slice);
+impl_named_from!([Option<u64>], UInt64Type, new_from_opt_slice);
+impl_named_from!([Option<i8>], Int8Type, new_from_opt_slice);
+impl_named_from!([Option<i16>], Int16Type, new_from_opt_slice);
+impl_named_from!([Option<i32>], Int32Type, new_from_opt_slice);
+impl_named_from!([Option<i64>], Int64Type, new_from_opt_slice);
+impl_named_from!([Option<f32>], Float32Type, new_from_opt_slice);
+impl_named_from!([Option<f64>], Float64Type, new_from_opt_slice);
 //
 // // impl<T: AsRef<[Series]>> NamedFrom<T, ListType> for Series {
 // //     fn new(name: &str, s: T) -> Self {

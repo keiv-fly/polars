@@ -136,7 +136,8 @@ where
     }
 
     fn lt_eq(&self, rhs: Rhs) -> BooleanChunked {
-        apply_method_numeric_series!(self, lt_eq, rhs)
+        // apply_method_numeric_series!(self, lt_eq, rhs)
+        todo!()
     }
 }
 
