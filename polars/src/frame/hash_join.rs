@@ -207,7 +207,7 @@ pub(crate) trait HashJoin<T> {
 }
 
 impl HashJoin<Float64Type> for Float64Chunked {}
-impl HashJoin<Float32Type> for Float64Chunked {}
+impl HashJoin<Float32Type> for Float32Chunked {}
 impl HashJoin<ListType> for ListChunked {}
 
 macro_rules! det_hash_prone_order {

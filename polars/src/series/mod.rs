@@ -19,7 +19,6 @@ use arrow::array::ArrayDataRef;
 use std::ops::Deref;
 use std::sync::Arc;
 
-// make private
 pub(crate) mod private {
     use super::*;
     use crate::frame::group_by::PivotAgg;
@@ -295,7 +294,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         ))
     }
 
-    fn append_array(&self, _other: ArrayRef) -> Result<&Arc<dyn SeriesTrait>> {
+    fn append_array(&self, _other: ArrayRef) -> Result<Arc<dyn SeriesTrait>> {
         unimplemented!()
     }
 

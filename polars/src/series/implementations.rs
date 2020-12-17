@@ -10,6 +10,7 @@ use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
 use regex::internal::Input;
 use std::hash::Hash;
+use std::ops::Deref;
 use std::sync::Arc;
 
 pub(crate) struct Wrap<T>(pub T);
@@ -17,6 +18,14 @@ pub(crate) struct Wrap<T>(pub T);
 impl<T> From<ChunkedArray<T>> for Wrap<ChunkedArray<T>> {
     fn from(ca: ChunkedArray<T>) -> Self {
         Wrap(ca)
+    }
+}
+
+impl<T> Deref for Wrap<ChunkedArray<T>> {
+    type Target = ChunkedArray<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -1209,7 +1218,7 @@ macro_rules! impl_dyn_series {
                 right_column: &dyn SeriesTrait,
                 opt_join_tuples: &[(Option<usize>, Option<usize>)],
             ) -> Arc<dyn SeriesTrait> {
-                ZipOuterJoinColumn::zip_outer_join_column(self, right_column, opt_join_tuples)
+                ZipOuterJoinColumn::zip_outer_join_column(&self.0, right_column, opt_join_tuples)
             }
             fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
                 NumOpsDispatch::subtract(&self.0, rhs)
@@ -1229,15 +1238,12 @@ macro_rules! impl_dyn_series {
         }
 
         impl SeriesTrait for Wrap<$ca> {
-            fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
-                self.group_tuples()
-            }
             fn array_data(&self) -> Vec<ArrayDataRef> {
-                self.array_data()
+                self.0.array_data()
             }
 
             fn chunk_lengths(&self) -> &Vec<usize> {
-                self.chunk_id()
+                self.0.chunk_id()
             }
             /// Name of series.
             fn name(&self) -> &str {
@@ -1245,9 +1251,10 @@ macro_rules! impl_dyn_series {
             }
 
             /// Rename series.
-            fn rename(&mut self, name: &str) -> &mut dyn SeriesTrait {
-                self.rename(name);
-                self
+            fn rename(&self, name: &str) -> Arc<dyn SeriesTrait> {
+                let mut ca = self.0.clone();
+                ca.rename(name);
+                Arc::new(Wrap(ca))
             }
 
             /// Get field (used in schema)
@@ -1625,29 +1632,33 @@ macro_rules! impl_dyn_series {
                 }
             }
 
-            fn append_array(&mut self, other: ArrayRef) -> Result<&mut dyn SeriesTrait> {
-                self.append_array(other)?;
-                Ok(self)
+            fn append_array(&self, other: ArrayRef) -> Result<Arc<dyn SeriesTrait>> {
+                let mut ca = self.0.clone();
+                ca.append_array(other)?;
+                Ok(Arc::new(Wrap(ca)))
             }
 
             /// Take `num_elements` from the top as a zero copy view.
             fn limit(&self, num_elements: usize) -> Result<Arc<dyn SeriesTrait>> {
-                self.limit(num_elements)
+                self.0
+                    .limit(num_elements)
                     .map(|ca| Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
             }
 
             /// Get a zero copy view of the data.
             fn slice(&self, offset: usize, length: usize) -> Result<Arc<dyn SeriesTrait>> {
-                self.slice(offset, length)
+                self.0
+                    .slice(offset, length)
                     .map(|ca| Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
             }
 
             /// Append a Series of the same type in place.
-            fn append(&mut self, other: &dyn SeriesTrait) -> Result<&mut dyn SeriesTrait> {
-                if self.dtype() == other.dtype() {
+            fn append(&self, other: &dyn SeriesTrait) -> Result<Arc<dyn SeriesTrait>> {
+                if self.0.dtype() == other.dtype() {
+                    let mut ca = self.0.clone();
                     // todo! add object
-                    self.append(other.as_ref());
-                    Ok(self)
+                    ca.append(other.as_ref());
+                    Ok(Arc::new(Wrap(ca)))
                 } else {
                     Err(PolarsError::DataTypeMisMatch(
                         "cannot append Series; data types don't match".into(),
@@ -1657,7 +1668,7 @@ macro_rules! impl_dyn_series {
 
             /// Filter by boolean mask. This operation clones data.
             fn filter(&self, filter: &BooleanChunked) -> Result<Arc<dyn SeriesTrait>> {
-                ChunkFilter::filter(self, filter)
+                ChunkFilter::filter(&self.0, filter)
                     .map(|ca| Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
             }
 
@@ -1671,7 +1682,7 @@ macro_rules! impl_dyn_series {
                 iter: &mut dyn Iterator<Item = usize>,
                 capacity: Option<usize>,
             ) -> Arc<dyn SeriesTrait> {
-                Arc::new(ChunkTake::take(self, iter, capacity))
+                Arc::new(Wrap(ChunkTake::take(&self.0, iter, capacity)))
             }
 
             /// Take by index from an iterator. This operation clones the data.
@@ -1684,7 +1695,7 @@ macro_rules! impl_dyn_series {
                 iter: &mut dyn Iterator<Item = usize>,
                 capacity: Option<usize>,
             ) -> Arc<dyn SeriesTrait> {
-                Arc::new(ChunkTake::take_unchecked(self, iter, capacity))
+                Arc::new(Wrap(ChunkTake::take_unchecked(&self.0, iter, capacity)))
             }
 
             /// Take by index if ChunkedArray contains a single chunk.
@@ -1695,7 +1706,7 @@ macro_rules! impl_dyn_series {
                 &self,
                 idx: &UInt32Chunked,
             ) -> Result<Arc<dyn SeriesTrait>> {
-                ChunkTake::take_from_single_chunked(self, idx)
+                ChunkTake::take_from_single_chunked(&self.0, idx)
                     .map(|ca| Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
             }
 
@@ -1709,7 +1720,7 @@ macro_rules! impl_dyn_series {
                 iter: &mut dyn Iterator<Item = Option<usize>>,
                 capacity: Option<usize>,
             ) -> Arc<dyn SeriesTrait> {
-                Arc::new(ChunkTake::take_opt_unchecked(&self.0, iter, capacity))
+                Arc::new(Wrap(ChunkTake::take_opt_unchecked(&self.0, iter, capacity)))
             }
 
             /// Take by index from an iterator. This operation clones the data.
@@ -1722,7 +1733,7 @@ macro_rules! impl_dyn_series {
                 iter: &mut dyn Iterator<Item = Option<usize>>,
                 capacity: Option<usize>,
             ) -> Arc<dyn SeriesTrait> {
-                Arc::new(ChunkTake::take_opt(&self.0, iter, capacity))
+                Arc::new(Wrap(ChunkTake::take_opt(&self.0, iter, capacity)))
             }
 
             /// Take by index. This operation is clone.
@@ -1733,41 +1744,43 @@ macro_rules! impl_dyn_series {
             fn take(&self, indices: &dyn AsTakeIndex) -> Arc<dyn SeriesTrait> {
                 let mut iter = indices.as_take_iter();
                 let capacity = indices.take_index_len();
-                self.take_iter(&mut iter, Some(capacity))
+                Arc::new(Wrap(self.0.take(&mut iter, Some(capacity))))
             }
 
             /// Get length of series.
             fn len(&self) -> usize {
-                self.len()
+                self.0.len()
             }
 
             /// Check if Series is empty.
             fn is_empty(&self) -> bool {
-                self.is_empty()
+                self.0.is_empty()
             }
 
             /// Aggregate all chunks to a contiguous array of memory.
             fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Arc<dyn SeriesTrait>> {
-                ChunkOps::rechunk(self, chunk_lengths)
+                ChunkOps::rechunk(&self.0, chunk_lengths)
                     .map(|ca| Arc::new(Wrap(ca)) as Arc<dyn SeriesTrait>)
             }
 
             /// Get the head of the Series.
             fn head(&self, length: Option<usize>) -> Arc<dyn SeriesTrait> {
-                Arc::new(self.head(length))
+                Arc::new(Wrap(self.0.head(length)))
             }
 
             /// Get the tail of the Series.
             fn tail(&self, length: Option<usize>) -> Arc<dyn SeriesTrait> {
-                Arc::new(self.tail(length))
+                Arc::new(Wrap(self.0.tail(length)))
             }
 
             /// Drop all null values and return a new Series.
             fn drop_nulls(&self) -> Arc<dyn SeriesTrait> {
                 if self.null_count() == 0 {
-                    Arc::new(self.clone())
+                    Arc::new(Wrap(self.0.clone()))
                 } else {
-                    Arc::new(ChunkFilter::filter(&self.0, &self.is_not_null()).unwrap())
+                    Arc::new(Wrap(
+                        ChunkFilter::filter(&self.0, &self.is_not_null()).unwrap(),
+                    ))
                 }
             }
 
@@ -1783,7 +1796,7 @@ macro_rules! impl_dyn_series {
             /// ```
             fn expand_at_index(&self, index: usize, length: usize) -> Arc<dyn SeriesTrait> {
                 Arc::new(Wrap(ChunkExpandAtIndex::expand_at_index(
-                    self, index, length,
+                    &self.0, index, length,
                 )))
             }
 
@@ -2216,7 +2229,9 @@ macro_rules! impl_dyn_series {
         }
     };
 }
-impl SeriesTrait for Wrap<Float32Chunked> {}
+
+impl_dyn_series!(Float32Chunked);
+
 impl SeriesTrait for Wrap<Float64Chunked> {}
 impl SeriesTrait for Wrap<Utf8Chunked> {}
 impl SeriesTrait for Wrap<ListChunked> {}
@@ -2236,7 +2251,7 @@ impl SeriesTrait for Wrap<Date32Chunked> {}
 impl SeriesTrait for Wrap<Date64Chunked> {}
 impl SeriesTrait for Wrap<Time64NanosecondChunked> {}
 
-impl private::PrivateSeries for Wrap<Float32Chunked> {}
+// impl private::PrivateSeries for Wrap<Float32Chunked> {}
 impl private::PrivateSeries for Wrap<Float64Chunked> {}
 impl private::PrivateSeries for Wrap<Utf8Chunked> {}
 impl private::PrivateSeries for Wrap<ListChunked> {}

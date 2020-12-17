@@ -280,7 +280,7 @@ impl ChunkAgg<u32> for BooleanChunked {
 impl<T> ChunkAggSeries for ChunkedArray<T>
 where
     T: PolarsNumericType,
-    T::Native: PartialOrd + Num + NumCast + Bounded + Hash + Eq + NumComp,
+    T::Native: PartialOrd + Num + NumCast,
     ChunkedArray<T>: IntoSeries,
 {
     fn sum_as_series(&self) -> Arc<dyn SeriesTrait> {
