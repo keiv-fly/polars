@@ -742,6 +742,16 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     fn clone_inner(&self) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
+
+    #[cfg(feature = "random")]
+    #[doc(cfg(feature = "random"))]
+    /// Sample n datapoints from this Series.
+    fn sample_n(&self, n: usize, with_replacement: bool) -> Result<Series>;
+
+    #[cfg(feature = "random")]
+    #[doc(cfg(feature = "random"))]
+    /// Sample a fraction between 0.0-1.0 of this ChunkedArray.
+    fn sample_frac(&self, frac: f64, with_replacement: bool) -> Result<Series>;
 }
 
 impl<'a> (dyn SeriesTrait + 'a) {
@@ -907,7 +917,7 @@ impl Series {
         self.sum_as_series()
             .cast::<Float64Type>()
             .ok()
-            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+            .and_then(|s| s.f64().unwrap().get(0).and_then(T::from))
     }
 
     /// Returns the minimum value in the array, according to the natural order.
@@ -924,7 +934,7 @@ impl Series {
         self.min_as_series()
             .cast::<Float64Type>()
             .ok()
-            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+            .and_then(|s| s.f64().unwrap().get(0).and_then(T::from))
     }
 
     /// Returns the maximum value in the array, according to the natural order.
@@ -941,7 +951,7 @@ impl Series {
         self.max_as_series()
             .cast::<Float64Type>()
             .ok()
-            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+            .and_then(|s| s.f64().unwrap().get(0).and_then(T::from))
     }
 
     /// Returns the mean value in the array
@@ -953,7 +963,7 @@ impl Series {
         self.mean_as_series()
             .cast::<Float64Type>()
             .ok()
-            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+            .and_then(|s| s.f64().unwrap().get(0).and_then(T::from))
     }
 }
 
