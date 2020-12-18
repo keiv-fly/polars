@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::series::SeriesTrait;
 use crate::utils::get_supertype;
 use num::{Num, NumCast};
 use std::borrow::Cow;

@@ -2,7 +2,6 @@
 pub use crate::prelude::ChunkCompare;
 use crate::prelude::*;
 use arrow::{array::ArrayRef, buffer::Buffer};
-use std::mem;
 pub(crate) mod arithmetic;
 mod comparison;
 pub mod implementations;
@@ -10,7 +9,6 @@ pub(crate) mod iterator;
 #[allow(clippy::missing_safety_doc)]
 pub mod ops;
 
-use self::ops::SeriesOps;
 use crate::chunked_array::builder::get_list_builder;
 use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
@@ -340,7 +338,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     ///
     /// # Safety
     /// This doesn't check any bounds. Null validity is checked.
-    unsafe fn take_from_single_chunked(&self, idx: &UInt32Chunked) -> Result<Series> {
+    unsafe fn take_from_single_chunked(&self, _idx: &UInt32Chunked) -> Result<Series> {
         unimplemented!()
     }
 

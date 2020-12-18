@@ -5,63 +5,6 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use unsafe_unwrap::UnsafeUnwrap;
 
-macro_rules! hash_join_inner {
-    ($s_right:ident, $ca_left:ident, $type_:ident) => {{
-        // call the type method series.i32()
-        let ca_right = $s_right.$type_()?;
-        $ca_left.hash_join_inner(ca_right)
-    }};
-}
-
-macro_rules! hash_join_left {
-    ($s_right:ident, $ca_left:ident, $type_:ident) => {{
-        // call the type method series.i32()
-        let ca_right = $s_right.$type_()?;
-        $ca_left.hash_join_left(ca_right)
-    }};
-}
-
-macro_rules! hash_join_outer {
-    ($s_right:ident, $ca_left:ident, $type_:ident) => {{
-        // call the type method series.i32()
-        let ca_right = $s_right.$type_()?;
-        $ca_left.hash_join_outer(ca_right)
-    }};
-}
-
-macro_rules! apply_hash_join_on_series {
-    ($s_left:ident, $s_right:ident, $join_macro:ident) => {{
-        match $s_left {
-            Series::UInt8(ca_left) => $join_macro!($s_right, ca_left, u8),
-            Series::UInt16(ca_left) => $join_macro!($s_right, ca_left, u16),
-            Series::UInt32(ca_left) => $join_macro!($s_right, ca_left, u32),
-            Series::UInt64(ca_left) => $join_macro!($s_right, ca_left, u64),
-            Series::Int8(ca_left) => $join_macro!($s_right, ca_left, i8),
-            Series::Int16(ca_left) => $join_macro!($s_right, ca_left, i16),
-            Series::Int32(ca_left) => $join_macro!($s_right, ca_left, i32),
-            Series::Int64(ca_left) => $join_macro!($s_right, ca_left, i64),
-            Series::Bool(ca_left) => $join_macro!($s_right, ca_left, bool),
-            Series::Utf8(ca_left) => $join_macro!($s_right, ca_left, utf8),
-            Series::Date32(ca_left) => $join_macro!($s_right, ca_left, date32),
-            Series::Date64(ca_left) => $join_macro!($s_right, ca_left, date64),
-            Series::Time64Nanosecond(ca_left) => $join_macro!($s_right, ca_left, time64_nanosecond),
-            Series::DurationMillisecond(ca_left) => {
-                $join_macro!($s_right, ca_left, duration_millisecond)
-            }
-            Series::DurationNanosecond(ca_left) => {
-                $join_macro!($s_right, ca_left, duration_nanosecond)
-            }
-            #[cfg(feature = "dtype-interval")]
-            Series::IntervalDayTime(ca_left) => $join_macro!($s_right, ca_left, interval_daytime),
-            #[cfg(feature = "dtype-interval")]
-            Series::IntervalYearMonth(ca_left) => {
-                $join_macro!($s_right, ca_left, interval_year_month)
-            }
-            _ => unimplemented!(),
-        }
-    }};
-}
-
 pub(crate) fn prepare_hashed_relation<T>(
     b: impl Iterator<Item = T>,
 ) -> HashMap<T, Vec<usize>, RandomState>

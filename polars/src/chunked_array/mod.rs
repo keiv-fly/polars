@@ -46,8 +46,6 @@ use crate::chunked_array::object::ObjectArray;
 use arrow::array::{
     Array, ArrayDataRef, Date32Array, DurationMillisecondArray, DurationNanosecondArray, ListArray,
 };
-#[cfg(feature = "dtype-interval")]
-use arrow::array::{IntervalDayTimeArray, IntervalYearMonthArray};
 
 use crate::series::implementations::Wrap;
 use arrow::util::bit_util::{get_bit, round_upto_power_of_2};
@@ -208,9 +206,10 @@ impl<T> ChunkedArray<T> {
 
     /// Series to ChunkedArray<T>
     pub fn unpack_series_matching_type(&self, series: &Series) -> Result<&ChunkedArray<T>> {
-        let series = &**series;
+        let series_trait = &**series;
         if self.dtype() == series.dtype() {
-            let ca = unsafe { &*(series as *const dyn SeriesTrait as *const ChunkedArray<T>) };
+            let ca =
+                unsafe { &*(series_trait as *const dyn SeriesTrait as *const ChunkedArray<T>) };
             Ok(ca)
         } else {
             Err(PolarsError::DataTypeMisMatch(
@@ -528,7 +527,7 @@ where
             ArrowDataType::List(_) => {
                 let v = downcast!(ListArray);
                 let s: Wrap<_> = ("", v).into();
-                AnyType::List(s.0)
+                AnyType::List(Series(s.0))
             }
             ArrowDataType::Binary => AnyType::Object(&"object"),
             _ => unimplemented!(),

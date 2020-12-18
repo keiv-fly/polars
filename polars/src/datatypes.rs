@@ -6,8 +6,7 @@
 //! [See the AnyType variants](enum.AnyType.html#variants) for the data types that
 //! are currently supported.
 //!
-use crate::chunked_array::ChunkedArray;
-use crate::series::{Series, SeriesTrait};
+use crate::prelude::*;
 pub use arrow::datatypes::DataType as ArrowDataType;
 pub use arrow::datatypes::{
     ArrowNumericType, ArrowPrimitiveType, BooleanType, Date32Type, Date64Type, DateUnit,
@@ -18,7 +17,6 @@ pub use arrow::datatypes::{
     TimestampMillisecondType, TimestampNanosecondType, TimestampSecondType, UInt16Type, UInt32Type,
     UInt64Type, UInt8Type,
 };
-use std::sync::Arc;
 
 pub struct Utf8Type {}
 
@@ -85,10 +83,6 @@ pub type Date64Chunked = ChunkedArray<Date64Type>;
 pub type DurationNanosecondChunked = ChunkedArray<DurationNanosecondType>;
 pub type DurationMillisecondChunked = ChunkedArray<DurationMillisecondType>;
 pub type Time64NanosecondChunked = ChunkedArray<Time64NanosecondType>;
-#[cfg(feature = "dtype-interval")]
-pub type IntervalDayTimeChunked = ChunkedArray<IntervalDayTimeType>;
-#[cfg(feature = "dtype-interval")]
-pub type IntervalYearMonthChunked = ChunkedArray<IntervalYearMonthType>;
 
 pub trait PolarsPrimitiveType: ArrowPrimitiveType + Send + Sync {}
 impl PolarsPrimitiveType for BooleanType {}
@@ -107,10 +101,6 @@ impl PolarsPrimitiveType for Date64Type {}
 impl PolarsPrimitiveType for Time64NanosecondType {}
 impl PolarsPrimitiveType for DurationNanosecondType {}
 impl PolarsPrimitiveType for DurationMillisecondType {}
-#[cfg(feature = "dtype-interval")]
-impl PolarsPrimitiveType for IntervalYearMonthType {}
-#[cfg(feature = "dtype-interval")]
-impl PolarsPrimitiveType for IntervalDayTimeType {}
 
 pub trait PolarsNumericType: PolarsPrimitiveType + ArrowNumericType {}
 impl PolarsNumericType for UInt8Type {}
@@ -199,7 +189,7 @@ pub enum AnyType<'a> {
     IntervalDayTime(i64),
     #[cfg(feature = "dtype-interval")]
     IntervalYearMonth(i32),
-    List(Arc<dyn SeriesTrait>),
+    List(Series),
     /// Use as_any to get a dyn Any
     Object(&'a str),
 }

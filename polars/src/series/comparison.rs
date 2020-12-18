@@ -4,7 +4,6 @@ use super::Series;
 use crate::apply_method_numeric_series;
 use crate::prelude::*;
 use crate::series::arithmetic::coerce_lhs_rhs;
-use crate::series::SeriesTrait;
 
 fn fill_bool(val: bool, len: usize) -> BooleanChunked {
     std::iter::repeat(val).take(len).collect()

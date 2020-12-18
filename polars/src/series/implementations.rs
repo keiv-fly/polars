@@ -8,7 +8,6 @@ use crate::frame::hash_join::{HashJoin, ZipOuterJoinColumn};
 use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
-use regex::internal::Input;
 use std::ops::Deref;
 
 pub(crate) struct Wrap<T>(pub T);
