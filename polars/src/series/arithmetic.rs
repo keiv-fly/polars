@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::series::SeriesTrait;
 use crate::utils::get_supertype;
-use num::{Num, NumCast, ToPrimitive};
+use num::{Num, NumCast};
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::ops;
@@ -268,6 +268,17 @@ where
     }
 }
 
+impl<T> ops::Sub<T> for Series
+where
+    T: Num + NumCast,
+{
+    type Output = Self;
+
+    fn sub(self, rhs: T) -> Self::Output {
+        (&self).sub(rhs)
+    }
+}
+
 impl<T> ops::Add<T> for &Series
 where
     T: Num + NumCast,
@@ -276,6 +287,17 @@ where
 
     fn add(self, rhs: T) -> Self::Output {
         apply_method_all_arrow_series!(self, add_number, rhs)
+    }
+}
+
+impl<T> ops::Add<T> for Series
+where
+    T: Num + NumCast,
+{
+    type Output = Self;
+
+    fn add(self, rhs: T) -> Self::Output {
+        (&self).add(rhs)
     }
 }
 
@@ -290,6 +312,17 @@ where
     }
 }
 
+impl<T> ops::Div<T> for Series
+where
+    T: Num + NumCast,
+{
+    type Output = Self;
+
+    fn div(self, rhs: T) -> Self::Output {
+        (&self).div(rhs)
+    }
+}
+
 impl<T> ops::Mul<T> for &Series
 where
     T: Num + NumCast,
@@ -298,6 +331,17 @@ where
 
     fn mul(self, rhs: T) -> Self::Output {
         apply_method_all_arrow_series!(self, multiply_number, rhs)
+    }
+}
+
+impl<T> ops::Mul<T> for Series
+where
+    T: Num + NumCast,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: T) -> Self::Output {
+        (&self).mul(rhs)
     }
 }
 

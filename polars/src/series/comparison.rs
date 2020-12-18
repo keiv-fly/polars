@@ -10,28 +10,6 @@ fn fill_bool(val: bool, len: usize) -> BooleanChunked {
     std::iter::repeat(val).take(len).collect()
 }
 
-macro_rules! compare {
-    ($variant:path, $lhs:expr, $rhs:expr, $cmp_method:ident) => {{
-        if let $variant(rhs_) = $rhs {
-            $lhs.$cmp_method(rhs_)
-        } else {
-            fill_bool(false, $lhs.len())
-        }
-    }};
-}
-macro_rules! compare {
-    ($unpack_method:ident, $lhs:expr, $rhs:expr, $cmp_method:ident) => {{
-
-        if let Ok(a)
-
-        if let $variant(rhs_) = $rhs {
-            $lhs.$cmp_method(rhs_)
-        } else {
-            fill_bool(false, $lhs.len())
-        }
-    }};
-}
-
 macro_rules! impl_compare {
     ($self:expr, $rhs:expr, $method:ident) => {{
         match $self.dtype() {

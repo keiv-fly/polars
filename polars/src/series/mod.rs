@@ -14,6 +14,7 @@ use self::ops::SeriesOps;
 use crate::chunked_array::builder::get_list_builder;
 use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
+use num::NumCast;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -293,12 +294,12 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Get a zero copy view of the data.
-    fn slice(&self, offset: usize, length: usize) -> Result<Series> {
+    fn slice(&self, _offset: usize, _length: usize) -> Result<Series> {
         unimplemented!()
     }
 
     /// Append a Series of the same type in place.
-    fn append(&self, other: &Series) -> Result<Series> {
+    fn append(&self, _other: &Series) -> Result<Series> {
         unimplemented!()
     }
 
@@ -327,8 +328,8 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// This doesn't check any bounds or null validity.
     unsafe fn take_iter_unchecked(
         &self,
-        iter: &mut dyn Iterator<Item = usize>,
-        capacity: Option<usize>,
+        _iter: &mut dyn Iterator<Item = usize>,
+        _capacity: Option<usize>,
     ) -> Series {
         unimplemented!()
     }
@@ -348,8 +349,8 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// This doesn't check any bounds or null validity.
     unsafe fn take_opt_iter_unchecked(
         &self,
-        iter: &mut dyn Iterator<Item = Option<usize>>,
-        capacity: Option<usize>,
+        _iter: &mut dyn Iterator<Item = Option<usize>>,
+        _capacity: Option<usize>,
     ) -> Series {
         unimplemented!()
     }
@@ -361,8 +362,8 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// Out of bounds access doesn't Error but will return a Null value
     fn take_opt_iter(
         &self,
-        iter: &mut dyn Iterator<Item = Option<usize>>,
-        capacity: Option<usize>,
+        _iter: &mut dyn Iterator<Item = Option<usize>>,
+        _capacity: Option<usize>,
     ) -> Series {
         unimplemented!()
     }
@@ -372,7 +373,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// # Safety
     ///
     /// Out of bounds access doesn't Error but will return a Null value
-    fn take(&self, indices: &dyn AsTakeIndex) -> Series {
+    fn take(&self, _indices: &dyn AsTakeIndex) -> Series {
         unimplemented!()
     }
 
@@ -387,17 +388,17 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Aggregate all chunks to a contiguous array of memory.
-    fn rechunk(&self, chunk_lengths: Option<&[usize]>) -> Result<Series> {
+    fn rechunk(&self, _chunk_lengths: Option<&[usize]>) -> Result<Series> {
         unimplemented!()
     }
 
     /// Get the head of the Series.
-    fn head(&self, length: Option<usize>) -> Series {
+    fn head(&self, _length: Option<usize>) -> Series {
         unimplemented!()
     }
 
     /// Get the tail of the Series.
-    fn tail(&self, length: Option<usize>) -> Series {
+    fn tail(&self, _length: Option<usize>) -> Series {
         unimplemented!()
     }
 
@@ -416,11 +417,11 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// let expanded = s.expand_at_index(2, 4);
     /// assert_eq!(Vec::from(expanded.i32().unwrap()), &[Some(8), Some(8), Some(8), Some(8)])
     /// ```
-    fn expand_at_index(&self, index: usize, length: usize) -> Series {
+    fn expand_at_index(&self, _index: usize, _length: usize) -> Series {
         unimplemented!()
     }
 
-    fn cast_with_arrow_datatype(&self, data_type: &ArrowDataType) -> Result<Series> {
+    fn cast_with_arrow_datatype(&self, _data_type: &ArrowDataType) -> Result<Series> {
         unimplemented!()
     }
 
@@ -435,21 +436,21 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
 
     /// Get a single value by index. Don't use this operation for loops as a runtime cast is
     /// needed for every iteration.
-    fn get(&self, index: usize) -> AnyType {
+    fn get(&self, _index: usize) -> AnyType {
         unimplemented!()
     }
 
     /// Sort in place.
-    fn sort_in_place(&mut self, reverse: bool) -> &mut dyn SeriesTrait {
+    fn sort_in_place(&mut self, _reverse: bool) -> &mut dyn SeriesTrait {
         unimplemented!()
     }
 
-    fn sort(&self, reverse: bool) -> Series {
+    fn sort(&self, _reverse: bool) -> Series {
         unimplemented!()
     }
 
     /// Retrieve the indexes needed for a sort.
-    fn argsort(&self, reverse: bool) -> Vec<usize> {
+    fn argsort(&self, _reverse: bool) -> Vec<usize> {
         unimplemented!()
     }
 
@@ -540,7 +541,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// }
     /// example();
     /// ```
-    fn shift(&self, periods: i32) -> Result<Series> {
+    fn shift(&self, _periods: i32) -> Result<Series> {
         unimplemented!()
     }
 
@@ -580,13 +581,13 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// }
     /// example();
     /// ```
-    fn fill_none(&self, strategy: FillNoneStrategy) -> Result<Series> {
+    fn fill_none(&self, _strategy: FillNoneStrategy) -> Result<Series> {
         unimplemented!()
     }
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
     /// from `other` where the mask evaluates `false`
-    fn zip_with(&self, mask: &BooleanChunked, other: &dyn SeriesTrait) -> Result<Series> {
+    fn zip_with(&self, _mask: &BooleanChunked, _other: &dyn SeriesTrait) -> Result<Series> {
         unimplemented!()
     }
 
@@ -619,16 +620,16 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         unimplemented!()
     }
     /// Get the quantile of the ChunkedArray as a new Series of length 1.
-    fn quantile_as_series(&self, quantile: f64) -> Result<Series> {
+    fn quantile_as_series(&self, _quantile: f64) -> Result<Series> {
         unimplemented!()
     }
     /// Apply a rolling mean to a Series. See:
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_mean).
     fn rolling_mean(
         &self,
-        window_size: usize,
-        weight: Option<&[f64]>,
-        ignore_null: bool,
+        _window_size: usize,
+        _weight: Option<&[f64]>,
+        _ignore_null: bool,
     ) -> Result<Series> {
         unimplemented!()
     }
@@ -636,9 +637,9 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_sum).
     fn rolling_sum(
         &self,
-        window_size: usize,
-        weight: Option<&[f64]>,
-        ignore_null: bool,
+        _window_size: usize,
+        _weight: Option<&[f64]>,
+        _ignore_null: bool,
     ) -> Result<Series> {
         unimplemented!()
     }
@@ -646,9 +647,9 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_min).
     fn rolling_min(
         &self,
-        window_size: usize,
-        weight: Option<&[f64]>,
-        ignore_null: bool,
+        _window_size: usize,
+        _weight: Option<&[f64]>,
+        _ignore_null: bool,
     ) -> Result<Series> {
         unimplemented!()
     }
@@ -656,9 +657,9 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     /// [ChunkedArray::rolling_mean](crate::prelude::ChunkWindow::rolling_max).
     fn rolling_max(
         &self,
-        window_size: usize,
-        weight: Option<&[f64]>,
-        ignore_null: bool,
+        _window_size: usize,
+        _weight: Option<&[f64]>,
+        _ignore_null: bool,
     ) -> Result<Series> {
         unimplemented!()
     }
@@ -865,6 +866,67 @@ impl Series {
         N: PolarsDataType,
     {
         self.0.cast_with_arrow_datatype(&N::get_data_type())
+    }
+    /// Returns `None` if the array is empty or only contains null values.
+    /// ```
+    /// # use polars::prelude::*;
+    /// let s = Series::new("days", [1, 2, 3].as_ref());
+    /// assert_eq!(s.sum(), Some(6));
+    /// ```
+    pub fn sum<T>(&self) -> Option<T>
+    where
+        T: NumCast,
+    {
+        self.sum_as_series()
+            .cast::<Float64Type>()
+            .ok()
+            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+    }
+
+    /// Returns the minimum value in the array, according to the natural order.
+    /// Returns an option because the array is nullable.
+    /// ```
+    /// # use polars::prelude::*;
+    /// let s = Series::new("days", [1, 2, 3].as_ref());
+    /// assert_eq!(s.min(), Some(1));
+    /// ```
+    pub fn min<T>(&self) -> Option<T>
+    where
+        T: NumCast,
+    {
+        self.min_as_series()
+            .cast::<Float64Type>()
+            .ok()
+            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+    }
+
+    /// Returns the maximum value in the array, according to the natural order.
+    /// Returns an option because the array is nullable.
+    /// ```
+    /// # use polars::prelude::*;
+    /// let s = Series::new("days", [1, 2, 3].as_ref());
+    /// assert_eq!(s.max(), Some(3));
+    /// ```
+    pub fn max<T>(&self) -> Option<T>
+    where
+        T: NumCast,
+    {
+        self.max_as_series()
+            .cast::<Float64Type>()
+            .ok()
+            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
+    }
+
+    /// Returns the mean value in the array
+    /// Returns an option because the array is nullable.
+    pub fn mean<T>(&self) -> Option<T>
+    where
+        T: NumCast,
+    {
+        self.mean_as_series()
+            .cast::<Float64Type>()
+            .ok()
+            .and_then(|s| s.f64().unwrap().get(0).and_then(|v| T::from(v)))
     }
 }
 
@@ -1139,15 +1201,10 @@ mod test {
         let ar = UInt32Chunked::new_from_slice("a", &[1, 2]);
         let s = ar.into_series();
         let s2 = s.cast::<Int64Type>().unwrap();
-        match s2 {
-            Series::Int64(_) => assert!(true),
-            _ => assert!(false),
-        }
+
+        assert!(s2.i64().is_ok());
         let s2 = s.cast::<Float32Type>().unwrap();
-        match s2 {
-            Series::Float32(_) => assert!(true),
-            _ => assert!(false),
-        }
+        assert!(s2.f32().is_ok());
     }
 
     #[test]
