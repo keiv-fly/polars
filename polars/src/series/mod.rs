@@ -111,6 +111,8 @@ pub(crate) mod private {
 }
 
 pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
+    fn rename(&mut self, name: &str);
+
     /// Get Arrow ArrayData
     fn array_data(&self) -> Vec<ArrayDataRef> {
         unimplemented!()
@@ -284,7 +286,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
         ))
     }
 
-    fn append_array(&self, _other: ArrayRef) -> Result<Series> {
+    fn append_array(&mut self, _other: ArrayRef) -> Result<()> {
         unimplemented!()
     }
 
@@ -299,7 +301,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Append a Series of the same type in place.
-    fn append(&self, _other: &Series) -> Result<Series> {
+    fn append(&mut self, _other: &Series) -> Result<()> {
         unimplemented!()
     }
 
@@ -441,7 +443,7 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
 
     /// Sort in place.
-    fn sort_in_place(&mut self, _reverse: bool) -> &mut dyn SeriesTrait {
+    fn sort_in_place(&mut self, _reverse: bool) {
         unimplemented!()
     }
 
@@ -737,7 +739,9 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     fn year(&self) -> Result<Series> {
         unimplemented!()
     }
-    fn clone(&self) -> Series {
+
+    /// Clone inner ChunkedArray and wrap in a new Arc
+    fn clone_inner(&self) -> Arc<dyn SeriesTrait> {
         unimplemented!()
     }
 }
@@ -854,12 +858,37 @@ impl<'a> (dyn SeriesTrait + 'a) {
 pub struct Series(pub Arc<dyn SeriesTrait>);
 
 impl Series {
+    fn get_inner_mut(&mut self) -> &mut dyn SeriesTrait {
+        if Arc::weak_count(&self.0) + Arc::strong_count(&self.0) != 1 {
+            self.0 = self.0.clone_inner();
+        }
+        Arc::get_mut(&mut self.0).expect("implementation error")
+    }
+
     /// Rename series.
     pub fn rename(&mut self, name: &str) -> &mut Series {
-        // apply_method_all_arrow_series!(self, rename, name);
-        // todo! mutable macro
+        self.get_inner_mut().rename(name);
         self
     }
+
+    /// Append arrow array of same datatype.
+    fn append_array(&mut self, other: ArrayRef) -> Result<&mut Self> {
+        self.get_inner_mut().append_array(other)?;
+        Ok(self)
+    }
+
+    /// Append a Series of the same type in place.
+    pub fn append(&mut self, other: &Series) -> Result<&mut Self> {
+        self.get_inner_mut().append(other)?;
+        Ok(self)
+    }
+
+    /// Sort in place.
+    pub fn sort_in_place(&mut self, reverse: bool) -> &mut Self {
+        self.get_inner_mut().sort_in_place(reverse);
+        self
+    }
+
     /// Cast to some primitive type.
     pub fn cast<N>(&self) -> Result<Self>
     where

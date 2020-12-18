@@ -28,10 +28,7 @@ mod upstream_traits;
 pub trait IntoSeries {
     fn into_series(self) -> Series
     where
-        Self: Sized,
-    {
-        unimplemented!()
-    }
+        Self: Sized;
 }
 
 impl IntoSeries for Arc<dyn SeriesTrait> {
@@ -46,24 +43,34 @@ impl IntoSeries for Series {
     }
 }
 
-impl IntoSeries for ListChunked {}
-impl IntoSeries for BooleanChunked {}
-impl IntoSeries for UInt8Chunked {}
-impl IntoSeries for UInt16Chunked {}
-impl IntoSeries for UInt32Chunked {}
-impl IntoSeries for UInt64Chunked {}
-impl IntoSeries for Int8Chunked {}
-impl IntoSeries for Int16Chunked {}
-impl IntoSeries for Int32Chunked {}
-impl IntoSeries for Int64Chunked {}
-impl IntoSeries for Float32Chunked {}
-impl IntoSeries for Float64Chunked {}
-impl IntoSeries for Utf8Chunked {}
-impl IntoSeries for Date32Chunked {}
-impl IntoSeries for Date64Chunked {}
-impl IntoSeries for DurationNanosecondChunked {}
-impl IntoSeries for DurationMillisecondChunked {}
-impl IntoSeries for Time64NanosecondChunked {}
+macro_rules! impl_into_series {
+    ($ca_type: ident) => {
+        impl IntoSeries for $ca_type {
+            fn into_series(self) -> Series {
+                Series(Arc::new(Wrap(self)))
+            }
+        }
+    };
+}
+
+impl_into_series!(Float32Chunked);
+impl_into_series!(Float64Chunked);
+impl_into_series!(Utf8Chunked);
+impl_into_series!(ListChunked);
+impl_into_series!(BooleanChunked);
+impl_into_series!(UInt8Chunked);
+impl_into_series!(UInt16Chunked);
+impl_into_series!(UInt32Chunked);
+impl_into_series!(UInt64Chunked);
+impl_into_series!(Int8Chunked);
+impl_into_series!(Int16Chunked);
+impl_into_series!(Int32Chunked);
+impl_into_series!(Int64Chunked);
+impl_into_series!(DurationNanosecondChunked);
+impl_into_series!(DurationMillisecondChunked);
+impl_into_series!(Date32Chunked);
+impl_into_series!(Date64Chunked);
+impl_into_series!(Time64NanosecondChunked);
 
 #[derive(Clone)]
 pub struct DataFrame {

@@ -136,9 +136,16 @@ macro_rules! impl_dyn_series {
             fn remainder(&self, rhs: &Series) -> Result<Series> {
                 NumOpsDispatch::remainder(&self.0, rhs)
             }
+            fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
+                IntoGroupTuples::group_tuples(&self.0)
+            }
         }
 
         impl SeriesTrait for Wrap<$ca> {
+            fn rename(&mut self, name: &str) {
+                self.0.rename(name);
+            }
+
             fn array_data(&self) -> Vec<ArrayDataRef> {
                 self.0.array_data()
             }
@@ -526,10 +533,8 @@ macro_rules! impl_dyn_series {
                 }
             }
 
-            fn append_array(&self, other: ArrayRef) -> Result<Series> {
-                let mut ca = self.0.clone();
-                ca.append_array(other)?;
-                Ok(ca.into_series())
+            fn append_array(&mut self, other: ArrayRef) -> Result<()> {
+                self.0.append_array(other)
             }
 
             /// Take `num_elements` from the top as a zero copy view.
@@ -543,12 +548,11 @@ macro_rules! impl_dyn_series {
             }
 
             /// Append a Series of the same type in place.
-            fn append(&self, other: &Series) -> Result<Series> {
+            fn append(&mut self, other: &Series) -> Result<()> {
                 if self.0.dtype() == other.dtype() {
-                    let mut ca = self.0.clone();
                     // todo! add object
-                    ca.append(other.as_ref().as_ref());
-                    Ok(ca.into_series())
+                    self.0.append(other.as_ref().as_ref());
+                    Ok(())
                 } else {
                     Err(PolarsError::DataTypeMisMatch(
                         "cannot append Series; data types don't match".into(),
@@ -741,9 +745,8 @@ macro_rules! impl_dyn_series {
             }
 
             /// Sort in place.
-            fn sort_in_place(&mut self, reverse: bool) -> &mut dyn SeriesTrait {
+            fn sort_in_place(&mut self, reverse: bool) {
                 ChunkSort::sort_in_place(&mut self.0, reverse);
-                self
             }
 
             fn sort(&self, reverse: bool) -> Series {
@@ -1057,8 +1060,8 @@ macro_rules! impl_dyn_series {
                     )),
                 }
             }
-            fn clone(&self) -> Series {
-                Clone::clone(&self.0).into_series()
+            fn clone_inner(&self) -> Arc<dyn SeriesTrait> {
+                Arc::new(Wrap(Clone::clone(&self.0)))
             }
         }
     };

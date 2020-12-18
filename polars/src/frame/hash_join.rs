@@ -195,13 +195,13 @@ where
 }
 
 pub(crate) trait HashJoin<T> {
-    fn hash_join_inner(&self, other: &ChunkedArray<T>) -> Vec<(usize, usize)> {
+    fn hash_join_inner(&self, _other: &ChunkedArray<T>) -> Vec<(usize, usize)> {
         unimplemented!()
     }
-    fn hash_join_left(&self, other: &ChunkedArray<T>) -> Vec<(usize, Option<usize>)> {
+    fn hash_join_left(&self, _other: &ChunkedArray<T>) -> Vec<(usize, Option<usize>)> {
         unimplemented!()
     }
-    fn hash_join_outer(&self, other: &ChunkedArray<T>) -> Vec<(Option<usize>, Option<usize>)> {
+    fn hash_join_outer(&self, _other: &ChunkedArray<T>) -> Vec<(Option<usize>, Option<usize>)> {
         unimplemented!()
     }
 }
@@ -677,7 +677,7 @@ mod test {
         let joined = temp.left_join(&rain, "days", "days").unwrap();
         println!("{}", &joined);
         assert_eq!(
-            (joined.column("rain").unwrap().f32().unwrap().sum().unwrap() * 10.).round(),
+            (joined.column("rain").unwrap().sum::<f32>().unwrap() * 10.).round(),
             3.
         );
         assert_eq!(joined.column("rain").unwrap().null_count(), 3);
