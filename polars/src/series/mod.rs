@@ -859,6 +859,13 @@ impl Series {
         // todo! mutable macro
         self
     }
+    /// Cast to some primitive type.
+    pub fn cast<N>(&self) -> Result<Self>
+    where
+        N: PolarsDataType,
+    {
+        self.0.cast_with_arrow_datatype(&N::get_data_type())
+    }
 }
 
 impl Deref for Series {
@@ -1129,8 +1136,8 @@ mod test {
 
     #[test]
     fn cast() {
-        let ar = ChunkedArray::<Int32Type>::new_from_slice("a", &[1, 2]);
-        let s = Series::Int32(ar);
+        let ar = UInt32Chunked::new_from_slice("a", &[1, 2]);
+        let s = ar.into_series();
         let s2 = s.cast::<Int64Type>().unwrap();
         match s2 {
             Series::Int64(_) => assert!(true),

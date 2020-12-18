@@ -677,7 +677,7 @@ mod test {
         let joined = temp.left_join(&rain, "days", "days").unwrap();
         println!("{}", &joined);
         assert_eq!(
-            (joined.column("rain").unwrap().sum::<f32>().unwrap() * 10.).round(),
+            (joined.column("rain").unwrap().f32().unwrap().sum().unwrap() * 10.).round(),
             3.
         );
         assert_eq!(joined.column("rain").unwrap().null_count(), 3);
@@ -689,7 +689,7 @@ mod test {
         let joined = temp.outer_join(&rain, "days", "days").unwrap();
         println!("{:?}", &joined);
         assert_eq!(joined.height(), 5);
-        assert_eq!(joined.column("days").unwrap().sum::<i32>(), Some(7));
+        assert_eq!(joined.column("days").unwrap().f32().unwrap().sum(), Some(7));
     }
 
     #[test]

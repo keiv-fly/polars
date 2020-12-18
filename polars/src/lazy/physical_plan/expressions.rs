@@ -550,7 +550,7 @@ impl PhysicalExpr for ApplyExpr {
     }
 
     fn evaluate(&self, df: &DataFrame) -> Result<Series> {
-        let input = &*self.input.evaluate(df)?;
+        let input = self.input.evaluate(df)?;
         let in_name = input.name().to_string();
         let mut out = self.function.call_udf(input)?;
         if in_name != out.name() {

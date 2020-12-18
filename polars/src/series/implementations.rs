@@ -757,7 +757,7 @@ macro_rules! impl_dyn_series {
 
             /// Count the null values.
             fn null_count(&self) -> usize {
-                self.null_count()
+                self.0.null_count()
             }
 
             /// Get unique values in the Series.
@@ -803,7 +803,7 @@ macro_rules! impl_dyn_series {
 
             /// Get the bits that represent the null values of the underlying ChunkedArray
             fn null_bits(&self) -> Vec<(usize, Option<Buffer>)> {
-                self.null_bits()
+                self.0.null_bits()
             }
 
             /// return a Series in reversed order
