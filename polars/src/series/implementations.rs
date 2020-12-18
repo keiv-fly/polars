@@ -399,7 +399,7 @@ macro_rules! impl_dyn_series {
 
             /// Unpack to ChunkedArray
             fn date64(&self) -> Result<&Date64Chunked> {
-                if matches!(self.0.dtype(), ArrowDataType::Date64(DateUnit::Day)) {
+                if matches!(self.0.dtype(), ArrowDataType::Date64(DateUnit::Millisecond)) {
                     unsafe { Ok(&*(self as *const dyn SeriesTrait as *const Date64Chunked)) }
                 } else {
                     Err(PolarsError::DataTypeMisMatch(

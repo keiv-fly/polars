@@ -1036,7 +1036,7 @@ impl DataFrame {
     /// ```
     pub fn apply<F, S>(&mut self, column: &str, f: F) -> Result<&mut Self>
     where
-        F: FnOnce(&dyn SeriesTrait) -> S,
+        F: FnOnce(&Series) -> S,
         S: IntoSeries,
     {
         let idx = self
@@ -1076,7 +1076,7 @@ impl DataFrame {
     /// ```
     pub fn apply_at_idx<F, S>(&mut self, idx: usize, f: F) -> Result<&mut Self>
     where
-        F: FnOnce(&dyn SeriesTrait) -> S,
+        F: FnOnce(&Series) -> S,
         S: IntoSeries,
     {
         let width = self.width();
@@ -1090,7 +1090,7 @@ impl DataFrame {
             )
         })?;
         let name = col.name().to_string();
-        let _ = mem::replace(col, f(&**col).into_series());
+        let _ = mem::replace(col, f(col).into_series());
 
         // make sure the name remains the same after applying the closure
         unsafe {
@@ -1142,7 +1142,7 @@ impl DataFrame {
     /// ```
     pub fn may_apply_at_idx<F, S>(&mut self, idx: usize, f: F) -> Result<&mut Self>
     where
-        F: FnOnce(&dyn SeriesTrait) -> Result<S>,
+        F: FnOnce(&Series) -> Result<S>,
         S: IntoSeries,
     {
         let width = self.width();
@@ -1157,7 +1157,7 @@ impl DataFrame {
         })?;
         let name = col.name().to_string();
 
-        let _ = mem::replace(col, f(&**col).map(|s| s.into_series())?);
+        let _ = mem::replace(col, f(col).map(|s| s.into_series())?);
 
         // make sure the name remains the same after applying the closure
         unsafe {
@@ -1211,7 +1211,7 @@ impl DataFrame {
     /// ```
     pub fn may_apply<F, S>(&mut self, column: &str, f: F) -> Result<&mut Self>
     where
-        F: FnOnce(&dyn SeriesTrait) -> Result<S>,
+        F: FnOnce(&Series) -> Result<S>,
         S: IntoSeries,
     {
         let idx = self
