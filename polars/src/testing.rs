@@ -1,9 +1,9 @@
 //! Testing utilities.
 use crate::prelude::*;
 
-impl dyn SeriesTrait {
+impl Series {
     /// Check if series are equal. Note that `None == None` evaluates to `false`
-    pub fn series_equal(&self, other: &dyn SeriesTrait) -> bool {
+    pub fn series_equal(&self, other: &Series) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -17,7 +17,7 @@ impl dyn SeriesTrait {
     }
 
     /// Check if all values in series are equal where `None == None` evaluates to `true`.
-    pub fn series_equal_missing(&self, other: &dyn SeriesTrait) -> bool {
+    pub fn series_equal_missing(&self, other: &Series) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -42,7 +42,7 @@ impl DataFrame {
             return false;
         }
         for (left, right) in self.get_columns().iter().zip(other.get_columns()) {
-            if !left.series_equal(&**right) {
+            if !left.series_equal(right) {
                 return false;
             }
         }
@@ -55,7 +55,7 @@ impl DataFrame {
             return false;
         }
         for (left, right) in self.get_columns().iter().zip(other.get_columns()) {
-            if !left.series_equal_missing(&**right) {
+            if !left.series_equal_missing(right) {
                 return false;
             }
         }

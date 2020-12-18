@@ -12,8 +12,6 @@ pub mod ops;
 
 use self::ops::SeriesOps;
 use crate::chunked_array::builder::get_list_builder;
-use crate::fmt::FmtList;
-use crate::frame::group_by::IntoGroupTuples;
 use crate::series::implementations::Wrap;
 use arrow::array::ArrayDataRef;
 use std::ops::Deref;
@@ -24,85 +22,85 @@ pub(crate) mod private {
     use crate::frame::group_by::PivotAgg;
 
     pub trait PrivateSeries {
-        fn agg_mean(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+        fn agg_mean(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_min(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+        fn agg_min(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_max(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+        fn agg_max(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_sum(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+        fn agg_sum(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_first(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+        fn agg_first(&self, _groups: &[(usize, Vec<usize>)]) -> Series {
             unimplemented!()
         }
-        fn agg_last(&self, groups: &[(usize, Vec<usize>)]) -> Series {
+        fn agg_last(&self, _groups: &[(usize, Vec<usize>)]) -> Series {
             unimplemented!()
         }
-        fn agg_n_unique(&self, groups: &[(usize, Vec<usize>)]) -> Option<UInt32Chunked> {
+        fn agg_n_unique(&self, _groups: &[(usize, Vec<usize>)]) -> Option<UInt32Chunked> {
             unimplemented!()
         }
-        fn agg_list(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+        fn agg_list(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_quantile(&self, groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Series> {
+        fn agg_quantile(&self, _groups: &[(usize, Vec<usize>)], _quantile: f64) -> Option<Series> {
             unimplemented!()
         }
-        fn agg_median(&self, groups: &[(usize, Vec<usize>)]) -> Option<Series> {
+        fn agg_median(&self, _groups: &[(usize, Vec<usize>)]) -> Option<Series> {
             unimplemented!()
         }
         fn pivot<'a>(
             &self,
-            pivot_series: &'a (dyn SeriesTrait + 'a),
-            keys: Vec<Series>,
-            groups: &[(usize, Vec<usize>)],
-            agg_type: PivotAgg,
+            _pivot_series: &'a (dyn SeriesTrait + 'a),
+            _keys: Vec<Series>,
+            _groups: &[(usize, Vec<usize>)],
+            _agg_type: PivotAgg,
         ) -> Result<DataFrame> {
             unimplemented!()
         }
 
         fn pivot_count<'a>(
             &self,
-            pivot_series: &'a (dyn SeriesTrait + 'a),
-            keys: Vec<Series>,
-            groups: &[(usize, Vec<usize>)],
+            _pivot_series: &'a (dyn SeriesTrait + 'a),
+            _keys: Vec<Series>,
+            _groups: &[(usize, Vec<usize>)],
         ) -> Result<DataFrame> {
             unimplemented!()
         }
 
-        fn hash_join_inner(&self, other: &dyn SeriesTrait) -> Vec<(usize, usize)> {
+        fn hash_join_inner(&self, _other: &Series) -> Vec<(usize, usize)> {
             unimplemented!()
         }
-        fn hash_join_left(&self, other: &dyn SeriesTrait) -> Vec<(usize, Option<usize>)> {
+        fn hash_join_left(&self, _other: &Series) -> Vec<(usize, Option<usize>)> {
             unimplemented!()
         }
-        fn hash_join_outer(&self, other: &dyn SeriesTrait) -> Vec<(Option<usize>, Option<usize>)> {
+        fn hash_join_outer(&self, _other: &Series) -> Vec<(Option<usize>, Option<usize>)> {
             unimplemented!()
         }
         fn zip_outer_join_column(
             &self,
-            right_column: &dyn SeriesTrait,
-            opt_join_tuples: &[(Option<usize>, Option<usize>)],
+            _right_column: &Series,
+            _opt_join_tuples: &[(Option<usize>, Option<usize>)],
         ) -> Series {
             unimplemented!()
         }
 
-        fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+        fn subtract(&self, _rhs: &Series) -> Result<Series> {
             unimplemented!()
         }
-        fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+        fn add_to(&self, _rhs: &Series) -> Result<Series> {
             unimplemented!()
         }
-        fn multiply(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+        fn multiply(&self, _rhs: &Series) -> Result<Series> {
             unimplemented!()
         }
-        fn divide(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+        fn divide(&self, _rhs: &Series) -> Result<Series> {
             unimplemented!()
         }
-        fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+        fn remainder(&self, _rhs: &Series) -> Result<Series> {
             unimplemented!()
         }
         fn group_tuples(&self) -> Vec<(usize, Vec<usize>)> {
@@ -123,11 +121,6 @@ pub trait SeriesTrait: Send + Sync + private::PrivateSeries {
     }
     /// Name of series.
     fn name(&self) -> &str {
-        unimplemented!()
-    }
-
-    /// Rename series.
-    fn rename(&self, _name: &str) -> Series {
         unimplemented!()
     }
 
@@ -858,6 +851,15 @@ impl<'a> (dyn SeriesTrait + 'a) {
 /// ```
 #[derive(Clone)]
 pub struct Series(pub Arc<dyn SeriesTrait>);
+
+impl Series {
+    /// Rename series.
+    pub fn rename(&mut self, name: &str) -> &mut Series {
+        // apply_method_all_arrow_series!(self, rename, name);
+        // todo! mutable macro
+        self
+    }
+}
 
 impl Deref for Series {
     type Target = dyn SeriesTrait;

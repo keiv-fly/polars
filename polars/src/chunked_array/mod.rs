@@ -207,10 +207,8 @@ impl<T> ChunkedArray<T> {
     }
 
     /// Series to ChunkedArray<T>
-    pub fn unpack_series_matching_type(
-        &self,
-        series: &dyn SeriesTrait,
-    ) -> Result<&ChunkedArray<T>> {
+    pub fn unpack_series_matching_type(&self, series: &Series) -> Result<&ChunkedArray<T>> {
+        let series = &**series;
         if self.dtype() == series.dtype() {
             let ca = unsafe { &*(series as *const dyn SeriesTrait as *const ChunkedArray<T>) };
             Ok(ca)

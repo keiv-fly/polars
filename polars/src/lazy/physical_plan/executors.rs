@@ -488,14 +488,14 @@ impl Executor for JoinExec {
         let df_left = df_left?;
         let df_right = df_right?;
 
-        let s_left = &*self.left_on.evaluate(&df_left)?;
-        let s_right = &*self.right_on.evaluate(&df_right)?;
+        let s_left = self.left_on.evaluate(&df_left)?;
+        let s_right = self.right_on.evaluate(&df_right)?;
 
         use JoinType::*;
         let df = match self.how {
-            Left => df_left.left_join_from_series(&df_right, s_left, s_right),
-            Inner => df_left.inner_join_from_series(&df_right, s_left, s_right),
-            Outer => df_left.outer_join_from_series(&df_right, s_left, s_right),
+            Left => df_left.left_join_from_series(&df_right, &s_left, &s_right),
+            Inner => df_left.inner_join_from_series(&df_right, &s_left, &s_right),
+            Outer => df_left.outer_join_from_series(&df_right, &s_left, &s_right),
         };
         if std::env::var(POLARS_VERBOSE).is_ok() {
             println!("{:?} join dataframes finished", self.how);

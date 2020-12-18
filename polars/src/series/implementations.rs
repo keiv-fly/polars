@@ -9,9 +9,7 @@ use crate::prelude::*;
 use arrow::array::{ArrayDataRef, ArrayRef};
 use arrow::buffer::Buffer;
 use regex::internal::Input;
-use std::hash::Hash;
 use std::ops::Deref;
-use std::sync::Arc;
 
 pub(crate) struct Wrap<T>(pub T);
 
@@ -107,38 +105,35 @@ macro_rules! impl_dyn_series {
             ) -> Result<DataFrame> {
                 self.0.pivot_count(pivot_series, keys, groups)
             }
-            fn hash_join_inner(&self, other: &dyn SeriesTrait) -> Vec<(usize, usize)> {
-                HashJoin::hash_join_inner(&self.0, other.as_ref())
+            fn hash_join_inner(&self, other: &Series) -> Vec<(usize, usize)> {
+                HashJoin::hash_join_inner(&self.0, other.as_ref().as_ref())
             }
-            fn hash_join_left(&self, other: &dyn SeriesTrait) -> Vec<(usize, Option<usize>)> {
-                HashJoin::hash_join_left(&self.0, other.as_ref())
+            fn hash_join_left(&self, other: &Series) -> Vec<(usize, Option<usize>)> {
+                HashJoin::hash_join_left(&self.0, other.as_ref().as_ref())
             }
-            fn hash_join_outer(
-                &self,
-                other: &dyn SeriesTrait,
-            ) -> Vec<(Option<usize>, Option<usize>)> {
-                HashJoin::hash_join_outer(&self.0, other.as_ref())
+            fn hash_join_outer(&self, other: &Series) -> Vec<(Option<usize>, Option<usize>)> {
+                HashJoin::hash_join_outer(&self.0, other.as_ref().as_ref())
             }
             fn zip_outer_join_column(
                 &self,
-                right_column: &dyn SeriesTrait,
+                right_column: &Series,
                 opt_join_tuples: &[(Option<usize>, Option<usize>)],
             ) -> Series {
                 ZipOuterJoinColumn::zip_outer_join_column(&self.0, right_column, opt_join_tuples)
             }
-            fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+            fn subtract(&self, rhs: &Series) -> Result<Series> {
                 NumOpsDispatch::subtract(&self.0, rhs)
             }
-            fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+            fn add_to(&self, rhs: &Series) -> Result<Series> {
                 NumOpsDispatch::add_to(&self.0, rhs)
             }
-            fn multiply(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+            fn multiply(&self, rhs: &Series) -> Result<Series> {
                 NumOpsDispatch::multiply(&self.0, rhs)
             }
-            fn divide(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+            fn divide(&self, rhs: &Series) -> Result<Series> {
                 NumOpsDispatch::divide(&self.0, rhs)
             }
-            fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+            fn remainder(&self, rhs: &Series) -> Result<Series> {
                 NumOpsDispatch::remainder(&self.0, rhs)
             }
         }
@@ -153,19 +148,12 @@ macro_rules! impl_dyn_series {
             }
             /// Name of series.
             fn name(&self) -> &str {
-                self.name()
-            }
-
-            /// Rename series.
-            fn rename(&self, name: &str) -> Series {
-                let mut ca = self.0.clone();
-                ca.rename(name);
-                ca.into_series()
+                self.0.name()
             }
 
             /// Get field (used in schema)
             fn field(&self) -> &Field {
-                self.ref_field()
+                self.0.ref_field()
             }
 
             /// Get datatype of series.
@@ -175,12 +163,12 @@ macro_rules! impl_dyn_series {
 
             /// Underlying chunks.
             fn chunks(&self) -> &Vec<ArrayRef> {
-                self.chunks()
+                self.0.chunks()
             }
 
             /// No. of chunks
             fn n_chunks(&self) -> usize {
-                self.chunks().len()
+                self.0.chunks().len()
             }
 
             fn i8(&self) -> Result<&Int8Chunked> {
@@ -795,12 +783,12 @@ macro_rules! impl_dyn_series {
 
             /// Get a mask of the null values.
             fn is_null(&self) -> BooleanChunked {
-                self.is_null()
+                self.0.is_null()
             }
 
             /// Get a mask of the non-null values.
             fn is_not_null(&self) -> BooleanChunked {
-                self.is_not_null()
+                self.0.is_not_null()
             }
 
             /// Get a mask of all the unique values.

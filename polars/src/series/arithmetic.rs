@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::ops;
 
 pub trait NumOpsDispatch: Debug {
-    fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn subtract(&self, rhs: &Series) -> Result<Series> {
         Err(PolarsError::InvalidOperation(
             format!(
                 "subtraction operation not supported for {:?} and {:?}",
@@ -16,7 +16,7 @@ pub trait NumOpsDispatch: Debug {
             .into(),
         ))
     }
-    fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn add_to(&self, rhs: &Series) -> Result<Series> {
         Err(PolarsError::InvalidOperation(
             format!(
                 "addition operation not supported for {:?} and {:?}",
@@ -25,7 +25,7 @@ pub trait NumOpsDispatch: Debug {
             .into(),
         ))
     }
-    fn multiply(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn multiply(&self, rhs: &Series) -> Result<Series> {
         Err(PolarsError::InvalidOperation(
             format!(
                 "multiplication operation not supported for {:?} and {:?}",
@@ -34,7 +34,7 @@ pub trait NumOpsDispatch: Debug {
             .into(),
         ))
     }
-    fn divide(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn divide(&self, rhs: &Series) -> Result<Series> {
         Err(PolarsError::InvalidOperation(
             format!(
                 "division operation not supported for {:?} and {:?}",
@@ -43,7 +43,7 @@ pub trait NumOpsDispatch: Debug {
             .into(),
         ))
     }
-    fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn remainder(&self, rhs: &Series) -> Result<Series> {
         Err(PolarsError::InvalidOperation(
             format!(
                 "remainder operation not supported for {:?} and {:?}",
@@ -66,27 +66,27 @@ where
         + num::One,
     ChunkedArray<T>: IntoSeries,
 {
-    fn subtract(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn subtract(&self, rhs: &Series) -> Result<Series> {
         let rhs = self.unpack_series_matching_type(rhs)?;
         let out = self - rhs;
         Ok(out.into_series())
     }
-    fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn add_to(&self, rhs: &Series) -> Result<Series> {
         let rhs = self.unpack_series_matching_type(rhs)?;
         let out = self + rhs;
         Ok(out.into_series())
     }
-    fn multiply(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn multiply(&self, rhs: &Series) -> Result<Series> {
         let rhs = self.unpack_series_matching_type(rhs)?;
         let out = self * rhs;
         Ok(out.into_series())
     }
-    fn divide(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn divide(&self, rhs: &Series) -> Result<Series> {
         let rhs = self.unpack_series_matching_type(rhs)?;
         let out = self / rhs;
         Ok(out.into_series())
     }
-    fn remainder(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn remainder(&self, rhs: &Series) -> Result<Series> {
         let rhs = self.unpack_series_matching_type(rhs)?;
         let out = self % rhs;
         Ok(out.into_series())
@@ -94,7 +94,7 @@ where
 }
 
 impl NumOpsDispatch for Utf8Chunked {
-    fn add_to(&self, rhs: &dyn SeriesTrait) -> Result<Series> {
+    fn add_to(&self, rhs: &Series) -> Result<Series> {
         let rhs = self.unpack_series_matching_type(rhs)?;
         let out = self + rhs;
         Ok(out.into_series())
@@ -104,24 +104,24 @@ impl NumOpsDispatch for BooleanChunked {}
 impl NumOpsDispatch for ListChunked {}
 
 pub(crate) fn coerce_lhs_rhs<'a>(
-    lhs: &'a dyn SeriesTrait,
-    rhs: &'a dyn SeriesTrait,
-) -> Result<(Series, Series)> {
+    lhs: &'a Series,
+    rhs: &'a Series,
+) -> Result<(Cow<'a, Series>, Cow<'a, Series>)> {
     let dtype = get_supertype(lhs.dtype(), rhs.dtype())?;
     let left = if lhs.dtype() == &dtype {
-        lhs.clone()
+        Cow::Borrowed(lhs)
     } else {
-        lhs.cast_with_arrow_datatype(&dtype)?
+        Cow::Owned(lhs.cast_with_arrow_datatype(&dtype)?)
     };
     let right = if rhs.dtype() == &dtype {
-        rhs.clone()
+        Cow::Borrowed(rhs)
     } else {
-        rhs.cast_with_arrow_datatype(&dtype)?
+        Cow::Owned(rhs.cast_with_arrow_datatype(&dtype)?)
     };
     Ok((left, right))
 }
 
-impl<'a> ops::Sub for &(dyn SeriesTrait + 'a) {
+impl ops::Sub for &Series {
     type Output = Series;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -130,7 +130,7 @@ impl<'a> ops::Sub for &(dyn SeriesTrait + 'a) {
     }
 }
 
-impl<'a> ops::Add for &(dyn SeriesTrait + 'a) {
+impl ops::Add for &Series {
     type Output = Series;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -139,7 +139,7 @@ impl<'a> ops::Add for &(dyn SeriesTrait + 'a) {
     }
 }
 
-impl<'a> std::ops::Mul for &(dyn SeriesTrait + 'a) {
+impl std::ops::Mul for &Series {
     type Output = Series;
 
     /// ```
@@ -153,7 +153,7 @@ impl<'a> std::ops::Mul for &(dyn SeriesTrait + 'a) {
     }
 }
 
-impl<'a> std::ops::Div for &(dyn SeriesTrait + 'a) {
+impl std::ops::Div for &Series {
     type Output = Series;
 
     /// ```
@@ -167,7 +167,7 @@ impl<'a> std::ops::Div for &(dyn SeriesTrait + 'a) {
     }
 }
 
-impl<'a> std::ops::Rem for &(dyn SeriesTrait + 'a) {
+impl std::ops::Rem for &Series {
     type Output = Series;
 
     /// ```
@@ -257,7 +257,7 @@ where
     }
 }
 
-impl<T> ops::Sub<T> for &dyn SeriesTrait
+impl<T> ops::Sub<T> for &Series
 where
     T: Num + NumCast,
 {
@@ -268,7 +268,7 @@ where
     }
 }
 
-impl<T> ops::Add<T> for &dyn SeriesTrait
+impl<T> ops::Add<T> for &Series
 where
     T: Num + NumCast,
 {
@@ -279,7 +279,7 @@ where
     }
 }
 
-impl<T> ops::Div<T> for &dyn SeriesTrait
+impl<T> ops::Div<T> for &Series
 where
     T: Num + NumCast,
 {
@@ -290,7 +290,7 @@ where
     }
 }
 
-impl<T> ops::Mul<T> for &dyn SeriesTrait
+impl<T> ops::Mul<T> for &Series
 where
     T: Num + NumCast,
 {
@@ -302,7 +302,7 @@ where
 }
 
 /// We cannot override the left hand side behaviour. So we create a trait Lhs num ops.
-/// This allows for 1.add(&dyn SeriesTrait)
+/// This allows for 1.add(&Series)
 
 pub(super) trait LhsNumOpsDispatch {
     fn lhs_subtract_number<N: Num + NumCast>(&self, _lhs: N) -> Series {

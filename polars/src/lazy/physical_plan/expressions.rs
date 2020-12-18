@@ -92,27 +92,25 @@ impl PhysicalExpr for BinaryExpr {
     }
 
     fn evaluate(&self, df: &DataFrame) -> Result<Series> {
-        let left = &*self.left.evaluate(df)?;
-        let right = &*self.right.evaluate(df)?;
+        let lhs = self.left.evaluate(df)?;
+        let rhs = self.right.evaluate(df)?;
+        let left = &lhs;
+        let right = &rhs;
 
         match self.op {
-            Operator::Gt => Ok(ChunkCompare::<&dyn SeriesTrait>::gt(left, right).into_series()),
-            Operator::GtEq => {
-                Ok(ChunkCompare::<&dyn SeriesTrait>::gt_eq(left, right).into_series())
-            }
-            Operator::Lt => Ok(ChunkCompare::<&dyn SeriesTrait>::lt(left, right).into_series()),
-            Operator::LtEq => {
-                Ok(ChunkCompare::<&dyn SeriesTrait>::lt_eq(left, right).into_series())
-            }
-            Operator::Eq => Ok(ChunkCompare::<&dyn SeriesTrait>::eq(left, right).into_series()),
-            Operator::NotEq => Ok(ChunkCompare::<&dyn SeriesTrait>::neq(left, right).into_series()),
+            Operator::Gt => Ok(ChunkCompare::<&Series>::gt(left, right).into_series()),
+            Operator::GtEq => Ok(ChunkCompare::<&Series>::gt_eq(left, right).into_series()),
+            Operator::Lt => Ok(ChunkCompare::<&Series>::lt(left, right).into_series()),
+            Operator::LtEq => Ok(ChunkCompare::<&Series>::lt_eq(left, right).into_series()),
+            Operator::Eq => Ok(ChunkCompare::<&Series>::eq(left, right).into_series()),
+            Operator::NotEq => Ok(ChunkCompare::<&Series>::neq(left, right).into_series()),
             Operator::Plus => Ok(left + right),
             Operator::Minus => Ok(left - right),
             Operator::Multiply => Ok(left * right),
             Operator::Divide => Ok(left / right),
             Operator::And => Ok((left.bool()? & right.bool()?).into_series()),
             Operator::Or => Ok((left.bool()? | right.bool()?).into_series()),
-            Operator::Not => Ok(ChunkCompare::<&dyn SeriesTrait>::eq(left, right).into_series()),
+            Operator::Not => Ok(ChunkCompare::<&Series>::eq(left, right).into_series()),
             Operator::Like => todo!(),
             Operator::NotLike => todo!(),
             Operator::Modulus => Ok(left % right),

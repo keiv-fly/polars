@@ -362,7 +362,7 @@ impl HashJoin<Utf8Type> for Utf8Chunked {
 pub trait ZipOuterJoinColumn {
     fn zip_outer_join_column(
         &self,
-        _right_column: &dyn SeriesTrait,
+        _right_column: &Series,
         _opt_join_tuples: &[(Option<usize>, Option<usize>)],
     ) -> Series {
         unimplemented!()
@@ -376,7 +376,7 @@ where
 {
     fn zip_outer_join_column(
         &self,
-        right_column: &dyn SeriesTrait,
+        right_column: &Series,
         opt_join_tuples: &[(Option<usize>, Option<usize>)],
     ) -> Series {
         let right_ca = self.unpack_series_matching_type(right_column).unwrap();
@@ -412,7 +412,7 @@ macro_rules! impl_zip_outer_join {
         impl ZipOuterJoinColumn for $chunkedtype {
             fn zip_outer_join_column(
                 &self,
-                right_column: &dyn SeriesTrait,
+                right_column: &Series,
                 opt_join_tuples: &[(Option<usize>, Option<usize>)],
             ) -> Series {
                 let right_ca = self.unpack_series_matching_type(right_column).unwrap();
@@ -493,14 +493,14 @@ impl DataFrame {
     ) -> Result<DataFrame> {
         let s_left = self.column(left_on)?;
         let s_right = other.column(right_on)?;
-        self.inner_join_from_series(other, &**s_left, &**s_right)
+        self.inner_join_from_series(other, s_left, s_right)
     }
 
     pub(crate) fn inner_join_from_series(
         &self,
         other: &DataFrame,
-        s_left: &dyn SeriesTrait,
-        s_right: &dyn SeriesTrait,
+        s_left: &Series,
+        s_right: &Series,
     ) -> Result<DataFrame> {
         let join_tuples = s_left.hash_join_inner(s_right);
 
@@ -531,14 +531,14 @@ impl DataFrame {
     pub fn left_join(&self, other: &DataFrame, left_on: &str, right_on: &str) -> Result<DataFrame> {
         let s_left = self.column(left_on)?;
         let s_right = other.column(right_on)?;
-        self.left_join_from_series(other, &**s_left, &**s_right)
+        self.left_join_from_series(other, s_left, s_right)
     }
 
     pub(crate) fn left_join_from_series(
         &self,
         other: &DataFrame,
-        s_left: &dyn SeriesTrait,
-        s_right: &dyn SeriesTrait,
+        s_left: &Series,
+        s_right: &Series,
     ) -> Result<DataFrame> {
         let opt_join_tuples = s_left.hash_join_left(s_right);
 
@@ -574,13 +574,13 @@ impl DataFrame {
     ) -> Result<DataFrame> {
         let s_left = self.column(left_on)?;
         let s_right = other.column(right_on)?;
-        self.outer_join_from_series(other, &**s_left, &**s_right)
+        self.outer_join_from_series(other, s_left, s_right)
     }
     pub(crate) fn outer_join_from_series(
         &self,
         other: &DataFrame,
-        s_left: &dyn SeriesTrait,
-        s_right: &dyn SeriesTrait,
+        s_left: &Series,
+        s_right: &Series,
     ) -> Result<DataFrame> {
         // Get the indexes of the joined relations
         let opt_join_tuples = s_left.hash_join_outer(s_right);

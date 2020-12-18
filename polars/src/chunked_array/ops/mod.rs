@@ -853,11 +853,7 @@ pub trait ChunkZip<T> {
 
     /// Create a new ChunkedArray with values from self where the mask evaluates `true` and values
     /// from `other` where the mask evaluates `false`
-    fn zip_with_series(
-        &self,
-        mask: &BooleanChunked,
-        other: &dyn SeriesTrait,
-    ) -> Result<ChunkedArray<T>>;
+    fn zip_with_series(&self, mask: &BooleanChunked, other: &Series) -> Result<ChunkedArray<T>>;
 }
 
 /// Apply kernels on the arrow array chunks in a ChunkedArray.
